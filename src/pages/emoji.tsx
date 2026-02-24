@@ -7,15 +7,13 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const Settings = () => {
+const Emoji = () => {
   return (
     <div className={cn("flex flex-col h-full", "p-4 gap-4")}>
       <Card className={cn("flex-1", "border-slate-700 bg-slate-800")}>
         <CardHeader>
-          <CardTitle className="text-lg">Settings</CardTitle>
-          <CardDescription>
-            Configure app preferences and options
-          </CardDescription>
+          <CardTitle className="text-lg">Emoji & GIF</CardTitle>
+          <CardDescription>Search and manage emojis and GIFs</CardDescription>
         </CardHeader>
         <CardContent>
           <div
@@ -25,7 +23,7 @@ const Settings = () => {
               "text-slate-400 text-sm",
             )}
           >
-            Settings panel coming soon!
+            Emoji and GIF picker coming soon!
           </div>
         </CardContent>
       </Card>
@@ -33,4 +31,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default Emoji;

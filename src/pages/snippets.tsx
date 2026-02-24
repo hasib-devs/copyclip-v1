@@ -7,14 +7,14 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const Settings = () => {
+const Snippets = () => {
   return (
     <div className={cn("flex flex-col h-full", "p-4 gap-4")}>
       <Card className={cn("flex-1", "border-slate-700 bg-slate-800")}>
         <CardHeader>
-          <CardTitle className="text-lg">Settings</CardTitle>
+          <CardTitle className="text-lg">Snippets</CardTitle>
           <CardDescription>
-            Configure app preferences and options
+            Create and manage text snippets and templates
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -25,7 +25,7 @@ const Settings = () => {
               "text-slate-400 text-sm",
             )}
           >
-            Settings panel coming soon!
+            Text snippets manager coming soon!
           </div>
         </CardContent>
       </Card>
@@ -33,4 +33,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default Snippets;
