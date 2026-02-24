@@ -3,7 +3,6 @@ mod db;
 mod models;
 
 use db::DatabaseService;
-use std::path::PathBuf;
 use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -20,29 +19,31 @@ pub fn run() {
         .setup(|app| {
             // Initialize database on app startup
             let app_handle = app.handle();
-            let app_dir = app
-                .path_resolver()
-                .app_data_dir()
-                .expect("failed to get app data directory");
+
+            // Get app data directory
+            let app_data_dir = if let Some(project_dirs) =
+                directories::ProjectDirs::from("dev", "hasib", "copyclip")
+            {
+                project_dirs.data_dir().to_path_buf()
+            } else {
+                // Fallback to current directory if ProjectDirs fails
+                std::env::current_dir().expect("failed to get current directory")
+            };
 
             // Create database path
-            let db_path = app_dir.join("copyclip.db");
+            let db_path = app_data_dir.join("copyclip.db");
 
-            // Spawn async task to initialize database
-            let db_path_clone = db_path.clone();
-            tauri::async_runtime::spawn(async move {
-                match DatabaseService::new(db_path_clone).await {
-                    Ok(db) => {
-                        // Store database service in app state
-                        let handle = app_handle;
-                        handle.manage(db);
-                        log::info!("Database initialized successfully");
-                    }
-                    Err(e) => {
-                        log::error!("Failed to initialize database: {}", e);
-                    }
+            // Initialize database synchronously (rusqlite is sync)
+            match DatabaseService::new(db_path) {
+                Ok(db) => {
+                    // Store database service in app state
+                    app_handle.manage(db);
+                    log::info!("Database initialized successfully");
                 }
-            });
+                Err(e) => {
+                    log::error!("Failed to initialize database: {}", e);
+                }
+            }
 
             Ok(())
         })

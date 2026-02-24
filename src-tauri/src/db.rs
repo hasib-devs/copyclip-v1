@@ -1,41 +1,37 @@
+use chrono::Utc;
+use rusqlite::{Connection, OptionalExtension, Result as SqliteResult};
 use std::path::PathBuf;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::SqlitePool;
-use uuid::Uuid;
+use std::sync::Mutex;
 
 use crate::models::{ClipboardItemModel, ClipboardQueryFilter};
 
 /**
  * Database service for clipboard history
- * Handles all database operations
+ * Handles all database operations using rusqlite
+ * Wrapped in Mutex for thread-safe access in Tauri
  */
 pub struct DatabaseService {
-    pool: SqlitePool,
+    conn: Mutex<Connection>,
 }
 
 impl DatabaseService {
     /**
-     * Initialize database with connection pool
+     * Initialize database with connection
      */
-    pub async fn new(db_path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(db_path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
         // Create parent directory if it doesn't exist
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
 
-        // Set up connection options
-        let options = SqliteConnectOptions::new()
-            .filename(&db_path)
-            .create_if_missing(true);
+        // Open connection
+        let conn = Connection::open(&db_path)?;
 
-        // Create connection pool
-        let pool = SqlitePoolOptions::new()
-            .max_connections(5)
-            .connect_with(options)
-            .await?;
+        // Enable foreign keys
+        conn.execute_batch("PRAGMA foreign_keys = ON;")?;
 
-        // Run migrations
-        sqlx::query(
+        // Create table
+        conn.execute(
             r#"
             CREATE TABLE IF NOT EXISTS clipboard_items (
                 id TEXT PRIMARY KEY,
@@ -49,235 +45,220 @@ impl DatabaseService {
                 updated_at INTEGER NOT NULL
             )
             "#,
-        )
-        .execute(&pool)
-        .await?;
+            [],
+        )?;
 
-        // Create indexes for common queries
-        sqlx::query(
+        // Create indexes
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_timestamp ON clipboard_items(timestamp DESC);",
-        )
-        .execute(&pool)
-        .await?;
+            [],
+        )?;
 
-        sqlx::query(
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_is_pinned ON clipboard_items(is_pinned);",
-        )
-        .execute(&pool)
-        .await?;
+            [],
+        )?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_item_type ON clipboard_items(item_type);")
-            .execute(&pool)
-            .await?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_item_type ON clipboard_items(item_type);",
+            [],
+        )?;
 
-        Ok(Self { pool })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     /**
      * Create a new clipboard item
      */
-    pub async fn create_item(&self, item: ClipboardItemModel) -> Result<(), Box<dyn std::error::Error>> {
-        sqlx::query(
+    pub fn create_item(&self, item: ClipboardItemModel) -> SqliteResult<usize> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
             r#"
             INSERT INTO clipboard_items 
             (id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
+            rusqlite::params![
+                &item.id,
+                &item.content,
+                &item.item_type,
+                item.is_pinned,
+                item.timestamp,
+                &item.image_base64,
+                &item.file_paths,
+                item.created_at,
+                item.updated_at,
+            ],
         )
-        .bind(&item.id)
-        .bind(&item.content)
-        .bind(&item.item_type)
-        .bind(item.is_pinned)
-        .bind(item.timestamp)
-        .bind(&item.image_base64)
-        .bind(&item.file_paths)
-        .bind(item.created_at)
-        .bind(item.updated_at)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
     }
 
     /**
      * Get item by id
      */
-    pub async fn get_item(&self, id: &str) -> Result<Option<ClipboardItemModel>, Box<dyn std::error::Error>> {
-        let row = sqlx::query_as::<_, (String, String, String, bool, i64, Option<String>, Option<String>, i64, i64)>(
-            "SELECT id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at FROM clipboard_items WHERE id = ?"
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+    pub fn get_item(&self, id: &str) -> SqliteResult<Option<ClipboardItemModel>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at FROM clipboard_items WHERE id = ?",
+        )?;
 
-        Ok(row.map(|(id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at)| {
-            ClipboardItemModel {
-                id,
-                content,
-                item_type,
-                is_pinned,
-                timestamp,
-                image_base64,
-                file_paths,
-                created_at,
-                updated_at,
-            }
-        }))
+        let item = stmt
+            .query_row(rusqlite::params![id], |row| {
+                Ok(ClipboardItemModel {
+                    id: row.get(0)?,
+                    content: row.get(1)?,
+                    item_type: row.get(2)?,
+                    is_pinned: row.get(3)?,
+                    timestamp: row.get(4)?,
+                    image_base64: row.get(5)?,
+                    file_paths: row.get(6)?,
+                    created_at: row.get(7)?,
+                    updated_at: row.get(8)?,
+                })
+            })
+            .optional()?;
+
+        Ok(item)
     }
 
     /**
      * Get all items with filtering
      */
-    pub async fn get_items(
-        &self,
-        filter: ClipboardQueryFilter,
-    ) -> Result<Vec<ClipboardItemModel>, Box<dyn std::error::Error>> {
+    pub fn get_items(&self, filter: ClipboardQueryFilter) -> SqliteResult<Vec<ClipboardItemModel>> {
+        let conn = self.conn.lock().unwrap();
         let mut query = String::from(
             "SELECT id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at FROM clipboard_items WHERE 1=1"
         );
 
-        // Add search filter
-        if filter.search.is_some() {
+        let mut values: Vec<String> = Vec::new();
+
+        if let Some(search) = &filter.search {
             query.push_str(" AND content LIKE ?");
+            values.push(format!("%{}%", search));
         }
 
-        // Add type filter
-        if filter.item_type.is_some() {
+        if let Some(item_type) = &filter.item_type {
             query.push_str(" AND item_type = ?");
+            values.push(item_type.clone());
         }
 
-        // Add pinned filter
         if let Some(is_pinned) = filter.is_pinned {
-            query.push_str(&format!(" AND is_pinned = {}", if is_pinned { 1 } else { 0 }));
+            query.push_str(&format!(
+                " AND is_pinned = {}",
+                if is_pinned { 1 } else { 0 }
+            ));
         }
 
-        // Add ordering and pagination
-        query.push_str(" ORDER BY is_pinned DESC, timestamp DESC LIMIT ? OFFSET ?");
+        query.push_str(&format!(
+            " ORDER BY is_pinned DESC, timestamp DESC LIMIT {} OFFSET {}",
+            filter.limit, filter.offset
+        ));
 
-        let mut sql_query = sqlx::query_as::<_, (String, String, String, bool, i64, Option<String>, Option<String>, i64, i64)>(&query);
+        let mut stmt = conn.prepare(&query)?;
 
-        if let Some(search) = filter.search {
-            sql_query = sql_query.bind(format!("%{}%", search));
-        }
+        let items = stmt
+            .query_map(rusqlite::params_from_iter(values), |row| {
+                Ok(ClipboardItemModel {
+                    id: row.get(0)?,
+                    content: row.get(1)?,
+                    item_type: row.get(2)?,
+                    is_pinned: row.get(3)?,
+                    timestamp: row.get(4)?,
+                    image_base64: row.get(5)?,
+                    file_paths: row.get(6)?,
+                    created_at: row.get(7)?,
+                    updated_at: row.get(8)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
-        if let Some(item_type) = filter.item_type {
-            sql_query = sql_query.bind(item_type);
-        }
-
-        sql_query = sql_query.bind(filter.limit as i64).bind(filter.offset as i64);
-
-        let rows = sql_query.fetch_all(&self.pool).await?;
-
-        Ok(rows.into_iter().map(|(id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at)| {
-            ClipboardItemModel {
-                id,
-                content,
-                item_type,
-                is_pinned,
-                timestamp,
-                image_base64,
-                file_paths,
-                created_at,
-                updated_at,
-            }
-        }).collect())
+        Ok(items)
     }
 
     /**
      * Update item (toggle pin for example)
      */
-    pub async fn update_item(&self, id: &str, is_pinned: bool) -> Result<(), Box<dyn std::error::Error>> {
-        let now = chrono::Utc::now().timestamp_millis();
+    pub fn update_item(&self, id: &str, is_pinned: bool) -> SqliteResult<usize> {
+        let conn = self.conn.lock().unwrap();
+        let now = Utc::now().timestamp_millis();
 
-        sqlx::query("UPDATE clipboard_items SET is_pinned = ?, updated_at = ? WHERE id = ?")
-            .bind(is_pinned)
-            .bind(now)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
+        conn.execute(
+            "UPDATE clipboard_items SET is_pinned = ?, updated_at = ? WHERE id = ?",
+            rusqlite::params![is_pinned, now, id],
+        )
     }
 
     /**
      * Delete item by id
      */
-    pub async fn delete_item(&self, id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        sqlx::query("DELETE FROM clipboard_items WHERE id = ?")
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
+    pub fn delete_item(&self, id: &str) -> SqliteResult<usize> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM clipboard_items WHERE id = ?",
+            rusqlite::params![id],
+        )
     }
 
     /**
      * Delete all items
      */
-    pub async fn delete_all(&self) -> Result<(), Box<dyn std::error::Error>> {
-        sqlx::query("DELETE FROM clipboard_items")
-            .execute(&self.pool)
-            .await?;
-
-        Ok(())
+    pub fn delete_all(&self) -> SqliteResult<usize> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM clipboard_items", [])
     }
 
     /**
      * Get item count
      */
-    pub async fn count_items(&self) -> Result<i64, Box<dyn std::error::Error>> {
-        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM clipboard_items")
-            .fetch_one(&self.pool)
-            .await?;
-
+    pub fn count_items(&self) -> SqliteResult<i64> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT COUNT(*) FROM clipboard_items")?;
+        let count = stmt.query_row([], |row| row.get(0))?;
         Ok(count)
     }
 
     /**
      * Delete items older than specified timestamp
      */
-    pub async fn delete_old_items(&self, before_timestamp: i64) -> Result<u64, Box<dyn std::error::Error>> {
-        let result = sqlx::query("DELETE FROM clipboard_items WHERE timestamp < ?")
-            .bind(before_timestamp)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(result.rows_affected())
-    }
+    // pub fn delete_old_items(&self, before_timestamp: i64) -> SqliteResult<usize> {
+    //     let conn = self.conn.lock().unwrap();
+    //     conn.execute(
+    //         "DELETE FROM clipboard_items WHERE timestamp < ?",
+    //         rusqlite::params![before_timestamp],
+    //     )
+    // }
 
     /**
      * Enforce max items limit
      */
-    pub async fn enforce_max_items(&self, max_items: i64) -> Result<(), Box<dyn std::error::Error>> {
-        sqlx::query(
+    pub fn enforce_max_items(&self, max_items: i64) -> SqliteResult<usize> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
             r#"
             DELETE FROM clipboard_items WHERE id IN (
                 SELECT id FROM clipboard_items 
                 WHERE is_pinned = 0
                 ORDER BY timestamp ASC 
-                LIMIT (SELECT COUNT(*) - ? FROM clipboard_items WHERE is_pinned = 0)
+                LIMIT MAX(0, (SELECT COUNT(*) - ? FROM clipboard_items WHERE is_pinned = 0))
             )
             "#,
+            rusqlite::params![max_items],
         )
-        .bind(max_items)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
     }
 
     /**
      * Check if item with same content exists (for deduplication)
      */
-    pub async fn check_duplicate(&self, content: &str, item_type: &str) -> Result<bool, Box<dyn std::error::Error>> {
-        let (count,): (i64,) = sqlx::query_as(
+    pub fn check_duplicate(&self, content: &str, item_type: &str) -> SqliteResult<bool> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
             "SELECT COUNT(*) FROM clipboard_items WHERE content = ? AND item_type = ? ORDER BY timestamp DESC LIMIT 1"
-        )
-        .bind(content)
-        .bind(item_type)
-        .fetch_one(&self.pool)
-        .await?;
+        )?;
 
+        let count = stmt.query_row(rusqlite::params![content, item_type], |row| {
+            row.get::<_, i64>(0)
+        })?;
         Ok(count > 0)
     }
 }

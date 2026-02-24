@@ -1,12 +1,12 @@
-use tauri::State;
 use crate::db::DatabaseService;
 use crate::models::{ClipboardItemModel, ClipboardQueryFilter};
+use tauri::State;
 
 /**
  * Initialize database (called on app startup)
  */
 #[tauri::command]
-pub async fn init_database(db_path: String) -> Result<String, String> {
+pub fn init_database(_db_path: String) -> Result<String, String> {
     // Database is initialized in main setup
     Ok("Database initialized".to_string())
 }
@@ -15,7 +15,7 @@ pub async fn init_database(db_path: String) -> Result<String, String> {
  * Save clipboard item to database
  */
 #[tauri::command]
-pub async fn save_clipboard_item(
+pub fn save_clipboard_item(
     id: String,
     content: String,
     item_type: String,
@@ -26,7 +26,6 @@ pub async fn save_clipboard_item(
     // Check for duplicate
     let is_duplicate = db
         .check_duplicate(&content, &item_type)
-        .await
         .map_err(|e| e.to_string())?;
 
     if is_duplicate {
@@ -35,14 +34,10 @@ pub async fn save_clipboard_item(
 
     let item = ClipboardItemModel::new(id, content, item_type, image_base64, file_paths);
 
-    db.create_item(item)
-        .await
-        .map_err(|e| e.to_string())?;
+    db.create_item(item).map_err(|e| e.to_string())?;
 
     // Enforce max items limit (100)
-    db.enforce_max_items(100)
-        .await
-        .map_err(|e| e.to_string())?;
+    db.enforce_max_items(100).map_err(|e| e.to_string())?;
 
     Ok(true) // Item saved successfully
 }
@@ -51,7 +46,7 @@ pub async fn save_clipboard_item(
  * Get clipboard items with filters
  */
 #[tauri::command]
-pub async fn get_clipboard_items(
+pub fn get_clipboard_items(
     search: Option<String>,
     item_type: Option<String>,
     is_pinned: Option<bool>,
@@ -67,36 +62,30 @@ pub async fn get_clipboard_items(
         offset,
     };
 
-    db.get_items(filter)
-        .await
-        .map_err(|e| e.to_string())
+    db.get_items(filter).map_err(|e| e.to_string())
 }
 
 /**
  * Get single item by id
  */
 #[tauri::command]
-pub async fn get_clipboard_item(
+pub fn get_clipboard_item(
     id: String,
     db: State<'_, DatabaseService>,
 ) -> Result<Option<ClipboardItemModel>, String> {
-    db.get_item(&id)
-        .await
-        .map_err(|e| e.to_string())
+    db.get_item(&id).map_err(|e| e.to_string())
 }
 
 /**
  * Update item (toggle pin status)
  */
 #[tauri::command]
-pub async fn update_clipboard_item(
+pub fn update_clipboard_item(
     id: String,
     is_pinned: bool,
     db: State<'_, DatabaseService>,
 ) -> Result<bool, String> {
-    db.update_item(&id, is_pinned)
-        .await
-        .map_err(|e| e.to_string())?;
+    db.update_item(&id, is_pinned).map_err(|e| e.to_string())?;
     Ok(true)
 }
 
@@ -104,13 +93,8 @@ pub async fn update_clipboard_item(
  * Delete single item
  */
 #[tauri::command]
-pub async fn delete_clipboard_item(
-    id: String,
-    db: State<'_, DatabaseService>,
-) -> Result<bool, String> {
-    db.delete_item(&id)
-        .await
-        .map_err(|e| e.to_string())?;
+pub fn delete_clipboard_item(id: String, db: State<'_, DatabaseService>) -> Result<bool, String> {
+    db.delete_item(&id).map_err(|e| e.to_string())?;
     Ok(true)
 }
 
@@ -118,12 +102,8 @@ pub async fn delete_clipboard_item(
  * Clear all clipboard history
  */
 #[tauri::command]
-pub async fn clear_clipboard_history(
-    db: State<'_, DatabaseService>,
-) -> Result<bool, String> {
-    db.delete_all()
-        .await
-        .map_err(|e| e.to_string())?;
+pub fn clear_clipboard_history(db: State<'_, DatabaseService>) -> Result<bool, String> {
+    db.delete_all().map_err(|e| e.to_string())?;
     Ok(true)
 }
 
@@ -131,19 +111,15 @@ pub async fn clear_clipboard_history(
  * Get total item count
  */
 #[tauri::command]
-pub async fn get_clipboard_count(
-    db: State<'_, DatabaseService>,
-) -> Result<i64, String> {
-    db.count_items()
-        .await
-        .map_err(|e| e.to_string())
+pub fn get_clipboard_count(db: State<'_, DatabaseService>) -> Result<i64, String> {
+    db.count_items().map_err(|e| e.to_string())
 }
 
 /**
  * Load all items on app startup
  */
 #[tauri::command]
-pub async fn load_initial_history(
+pub fn load_initial_history(
     db: State<'_, DatabaseService>,
 ) -> Result<Vec<ClipboardItemModel>, String> {
     let filter = ClipboardQueryFilter {
@@ -154,7 +130,5 @@ pub async fn load_initial_history(
         offset: 0,
     };
 
-    db.get_items(filter)
-        .await
-        .map_err(|e| e.to_string())
+    db.get_items(filter).map_err(|e| e.to_string())
 }
