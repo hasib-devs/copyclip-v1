@@ -41,8 +41,6 @@ const Home = () => {
     (displayPage + 1) * pageSize,
   );
 
-  console.log({ paginatedItems });
-
   const totalPages = Math.ceil(displayedItems.length / pageSize);
 
   // Handle copy action
@@ -190,34 +188,6 @@ const Home = () => {
                 key={item.id}
                 className="hover:bg-slate-50 transition-colors p-4"
               >
-                {/* Item Header */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded whitespace-nowrap">
-                      {item.type}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {new Date(item.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 ml-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleTogglePin(item.id, item.isPinned)}
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        item.isPinned
-                          ? "text-blue-600 hover:bg-blue-50"
-                          : "text-slate-400 hover:text-slate-600",
-                      )}
-                      title={item.isPinned ? "Unpin" : "Pin"}
-                    >
-                      {item.isPinned ? <Pin size={16} /> : <PinOff size={16} />}
-                    </Button>
-                  </div>
-                </div>
-
                 {/* Item Content */}
                 <div className="mb-3">
                   {item.type === "image" && item.imageBase64 ? (
@@ -253,6 +223,22 @@ const Home = () => {
                     <Copy size={16} className="mr-1" />
                     Copy
                   </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleTogglePin(item.id, item.isPinned)}
+                    className={cn(
+                      "h-8 w-8 p-0",
+                      item.isPinned
+                        ? "text-blue-600 hover:bg-blue-50"
+                        : "text-slate-400 hover:text-slate-600",
+                    )}
+                    title={item.isPinned ? "Unpin" : "Pin"}
+                  >
+                    {item.isPinned ? <Pin size={16} /> : <PinOff size={16} />}
+                  </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
