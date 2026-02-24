@@ -18,9 +18,11 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
    * Set up clipboard event listeners
    */
   const setupListeners = useCallback(async () => {
+    console.log("Setting up clipboard listeners...");
     try {
       // Create text update listener
       const unlistenText = await clipboard.onTextUpdate((text: string) => {
+        console.log({ text });
         if (text && text.trim()) {
           const item = {
             content: text,

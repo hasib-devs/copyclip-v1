@@ -20,6 +20,8 @@
     "clipboard:allow-read-image-base64",
     "clipboard:allow-write-image-base64",
     "clipboard:allow-read-files",
-    "clipboard:allow-write-files-uris"
+    "clipboard:allow-write-files-uris",
+    "clipboard:allow-has-files",
+    "clipboard:read-all"
   ]
 }
