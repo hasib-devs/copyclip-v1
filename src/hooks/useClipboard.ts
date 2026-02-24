@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { ClipboardContext } from "@/contexts/ClipboardContext";
+import { ClipboardContext } from "@/contexts/clipboard-context";
 import { ClipboardContextType } from "@/types/clipboard";
 
 /**

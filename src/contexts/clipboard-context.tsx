@@ -11,6 +11,8 @@ import {
 } from "@/types/clipboard";
 import clipboard from "tauri-plugin-clipboard-api";
 
+import { toast } from "sonner";
+
 /**
  * Create the context
  */
@@ -242,9 +244,11 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
       if (!query.trim()) return state.items;
 
       const lowerQuery = query.toLowerCase();
-      return state.items.filter((item) =>
+      const data = state.items.filter((item) =>
         item.content.toLowerCase().includes(lowerQuery),
       );
+
+      return data;
     },
     [state.items],
   );
@@ -263,18 +267,6 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
     dispatch({ type: "SET_ERROR", payload: error });
   }, []);
 
-  /**
-   * Get paginated items
-   */
-  const getPaginatedItems = useCallback(
-    (page: number, pageSize: number) => {
-      const start = page * pageSize;
-      const end = start + pageSize;
-      return state.items.slice(start, end);
-    },
-    [state.items],
-  );
-
   const value: ClipboardContextType = {
     ...state,
     addItem,
@@ -287,7 +279,6 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
     searchItems,
     getPinnedItems,
     setError,
-    getPaginatedItems,
     initializeItems,
   };
 

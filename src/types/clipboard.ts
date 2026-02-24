@@ -59,8 +59,6 @@ export interface ClipboardContextType extends ClipboardHistoryState {
   getPinnedItems: () => ItemType[];
   /** Set error message */
   setError: (error: string | null) => void;
-  /** Get paginated items */
-  getPaginatedItems: (page: number, pageSize: number) => ItemType[];
   /** Initialize items (used for loading from database) */
   initializeItems: (items: ItemType[]) => void;
 }

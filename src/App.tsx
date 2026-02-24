@@ -9,6 +9,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
 import { useLoadClipboardHistory } from "@/hooks/useLoadClipboardHistory";
 import "./App.css";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
   // Load initial clipboard history from database
@@ -19,6 +20,8 @@ function App() {
 
   return (
     <TooltipProvider>
+      <Toaster />
+
       <BrowserRouter>
         <div className="flex flex-col h-screen bg-white text-slate-900">
           {/* Navigation Bar */}

@@ -1,25 +1,24 @@
-import { useEffect, useState } from "react";
-import {
-  Search,
-  Copy,
-  Trash2,
-  Pin,
-  PinOff,
-  AlertCircle,
-  Activity,
-} from "lucide-react";
-import { confirm } from "@tauri-apps/plugin-dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { useClipboard } from "@/hooks/useClipboard";
+import { cn } from "@/lib/utils";
 import { databaseService } from "@/services/databaseService";
 import { ItemType } from "@/types/clipboard";
+import { confirm } from "@tauri-apps/plugin-dialog";
+import {
+  Activity,
+  AlertCircle,
+  Copy,
+  Pin,
+  PinOff,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { useCallback, useState } from "react";
 
 const Home = () => {
+  // Search query state
   const [searchQuery, setSearchQuery] = useState("");
-  const [displayPage, setDisplayPage] = useState(0);
-  const pageSize = 10;
 
   // Get clipboard context
   const {
@@ -32,16 +31,12 @@ const Home = () => {
     searchItems,
     clearHistory,
     setError,
+    stopMonitoring,
+    startMonitoring,
   } = useClipboard();
 
   // Get displayed items
   const displayedItems = searchQuery.trim() ? searchItems(searchQuery) : items;
-  const paginatedItems = displayedItems.slice(
-    displayPage * pageSize,
-    (displayPage + 1) * pageSize,
-  );
-
-  const totalPages = Math.ceil(displayedItems.length / pageSize);
 
   // Handle copy action
   const handleCopy = async (
@@ -58,6 +53,12 @@ const Home = () => {
   // Handle delete item with database persistence
   const handleDelete = async (id: string) => {
     try {
+      const confirmed = await confirm(
+        "Are you sure you want to delete this item?",
+        "Delete Item",
+      );
+      if (!confirmed) return;
+
       removeItem(id);
       const success = await databaseService.deleteItem(id);
       if (!success) {
@@ -84,20 +85,14 @@ const Home = () => {
     if (confirmed) {
       clearHistory();
       databaseService.clearAll();
-      setDisplayPage(0);
     }
   };
-
-  // Reset page when search changes
-  useEffect(() => {
-    setDisplayPage(0);
-  }, [searchQuery]);
 
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header Section */}
       <div className="border-b border-slate-200 p-4">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex gap-3 mb-4">
           <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-lg">
             📋
           </div>
@@ -112,43 +107,57 @@ const Home = () => {
                   isMonitoring ? "bg-green-500" : "bg-slate-300",
                 )}
               />
-              <span className="text-xs text-slate-600">
+              <span className="text-xs w-22 text-slate-600">
                 {isMonitoring ? "Monitoring" : "Not monitoring"}
               </span>
               <span className="text-xs text-slate-500 ml-2">
-                {items.length} items
+                {displayedItems.length} items
               </span>
             </div>
           </div>
-          {items.length > 0 && (
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={isMonitoring ? stopMonitoring : startMonitoring}
+            className="text-slate-600 hover:text-red-600"
+          >
+            {isMonitoring ? "Stop" : "Start"}
+          </Button>
+        </div>
+
+        <div className="flex gap-3 w-full">
+          {/* Search Bar */}
+          <div className="flex gap-2 flex-1">
+            <div className="flex-1 relative">
+              <Search
+                className="absolute left-3 top-2.5 text-slate-400"
+                size={18}
+              />
+              <Input
+                placeholder="Search clipboard history..."
+                value={searchQuery}
+                defaultValue={""}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={cn(
+                  "pl-10 bg-slate-50 border-slate-200",
+                  "focus:bg-white focus:border-blue-300",
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Clear button */}
+          {displayedItems.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleClearAll}
-              className="text-slate-600 hover:text-red-600"
+              className="text-slate-600 hover:text-red-600 ml-auto"
             >
               Clear
             </Button>
           )}
-        </div>
-
-        {/* Search Bar */}
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <Search
-              className="absolute left-3 top-2.5 text-slate-400"
-              size={18}
-            />
-            <Input
-              placeholder="Search clipboard history..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
-                "pl-10 bg-slate-50 border-slate-200",
-                "focus:bg-white focus:border-blue-300",
-              )}
-            />
-          </div>
         </div>
 
         {/* Error Message */}
@@ -162,18 +171,18 @@ const Home = () => {
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto bg-white">
-        {paginatedItems.length === 0 ? (
+        {displayedItems.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center text-4xl">
-                {items.length === 0 ? "📋" : "🔍"}
+                {displayedItems.length === 0 ? "📋" : "🔍"}
               </div>
               <p className="text-slate-500 text-sm">
-                {items.length === 0
+                {displayedItems.length === 0
                   ? "Copy something to start tracking your clipboard"
                   : "No items match your search"}
               </p>
-              {items.length === 0 && (
+              {displayedItems.length === 0 && (
                 <div className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-400">
                   <Activity size={14} />
                   <span>Listening for clipboard changes...</span>
@@ -183,7 +192,7 @@ const Home = () => {
           </div>
         ) : (
           <div className="divide-y divide-slate-200">
-            {paginatedItems.map((item) => (
+            {displayedItems.map((item) => (
               <div
                 key={item.id}
                 className="hover:bg-slate-50 transition-colors p-4"
@@ -201,13 +210,12 @@ const Home = () => {
                   ) : (
                     <p
                       className={cn(
-                        "text-sm text-slate-700 whitespace-pre-wrap",
-                        "max-h-20 overflow-hidden",
+                        "text-sm text-slate-700 bg-zinc-50 p-2 rounded",
+                        "max-h-20 overflow-hidden whitespace-pre-wrap",
                         item.type === "html" ? "font-mono text-xs" : "",
                       )}
                     >
-                      {item.content.substring(0, 200)}
-                      {item.content.length > 200 && "..."}
+                      {item.content}
                     </p>
                   )}
                 </div>
@@ -255,35 +263,6 @@ const Home = () => {
           </div>
         )}
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="border-t border-slate-200 p-4 flex items-center justify-between bg-slate-50">
-          <span className="text-xs text-slate-600">
-            Page {displayPage + 1} of {totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDisplayPage(Math.max(0, displayPage - 1))}
-              disabled={displayPage === 0}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setDisplayPage(Math.min(totalPages - 1, displayPage + 1))
-              }
-              disabled={displayPage === totalPages - 1}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
