@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/hooks/useClipboard";
 import { databaseService } from "@/services/databaseService";
+import { ItemType } from "@/types/clipboard";
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,9 +45,12 @@ const Home = () => {
   const totalPages = Math.ceil(displayedItems.length / pageSize);
 
   // Handle copy action
-  const handleCopy = async (content: string) => {
+  const handleCopy = async (
+    content: string,
+    type: ItemType["type"] = "text",
+  ) => {
     try {
-      await copyToClipboard(content);
+      await copyToClipboard(content, type);
     } catch (err) {
       setError("Failed to copy to clipboard");
     }
@@ -54,8 +58,18 @@ const Home = () => {
 
   // Handle delete item with database persistence
   const handleDelete = async (id: string) => {
-    removeItem(id);
-    await databaseService.deleteItem(id);
+    try {
+      removeItem(id);
+      const success = await databaseService.deleteItem(id);
+      if (!success) {
+        setError("Failed to delete item from database");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      setError("Failed to delete item from database");
+      // Re-add item if delete failed
+      // Note: You may want to reload from database here
+    }
   };
 
   // Handle pin toggle with database persistence
@@ -232,7 +246,7 @@ const Home = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleCopy(item.content)}
+                    onClick={() => handleCopy(item.content, item.type)}
                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
                   >
                     <Copy size={16} className="mr-1" />

@@ -2,7 +2,7 @@
  * Clipboard History Item
  * Represents a single clipboard entry with metadata
  */
-export interface ClipboardItem {
+export interface ItemType {
   /** Unique identifier */
   id: string;
   /** Clipboard content */
@@ -25,7 +25,7 @@ export interface ClipboardItem {
  */
 export interface ClipboardHistoryState {
   /** All clipboard items in history */
-  items: ClipboardItem[];
+  items: ItemType[];
   /** Whether clipboard monitoring is active */
   isMonitoring: boolean;
   /** Error message if any */
@@ -40,7 +40,7 @@ export interface ClipboardHistoryState {
  */
 export interface ClipboardContextType extends ClipboardHistoryState {
   /** Add item to beginning of history, manage max items */
-  addItem: (item: Omit<ClipboardItem, "id" | "timestamp">) => void;
+  addItem: (item: Omit<ItemType, "id" | "timestamp">) => void;
   /** Remove item by id */
   removeItem: (id: string) => void;
   /** Clear all history */
@@ -48,17 +48,17 @@ export interface ClipboardContextType extends ClipboardHistoryState {
   /** Toggle pin status of item */
   togglePin: (id: string) => void;
   /** Copy item content to clipboard */
-  copyToClipboard: (content: string) => Promise<void>;
+  copyToClipboard: (content: string, type: ItemType["type"]) => Promise<void>;
   /** Start monitoring clipboard */
   startMonitoring: () => Promise<void>;
   /** Stop monitoring clipboard */
   stopMonitoring: () => Promise<void>;
   /** Search items by query */
-  searchItems: (query: string) => ClipboardItem[];
+  searchItems: (query: string) => ItemType[];
   /** Get pinned items */
-  getPinnedItems: () => ClipboardItem[];
+  getPinnedItems: () => ItemType[];
   /** Set error message */
   setError: (error: string | null) => void;
   /** Get paginated items */
-  getPaginatedItems: (page: number, pageSize: number) => ClipboardItem[];
+  getPaginatedItems: (page: number, pageSize: number) => ItemType[];
 }

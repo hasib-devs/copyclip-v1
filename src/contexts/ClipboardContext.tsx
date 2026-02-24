@@ -5,10 +5,11 @@ import React, {
   ReactNode,
 } from "react";
 import {
-  ClipboardItem,
+  ItemType,
   ClipboardContextType,
   ClipboardHistoryState,
 } from "@/types/clipboard";
+import clipboard from "tauri-plugin-clipboard-api";
 
 /**
  * Create the context
@@ -21,13 +22,13 @@ export const ClipboardContext = createContext<ClipboardContextType | undefined>(
  * Action types for reducer
  */
 type ClipboardAction =
-  | { type: "ADD_ITEM"; payload: Omit<ClipboardItem, "id" | "timestamp"> }
+  | { type: "ADD_ITEM"; payload: Omit<ItemType, "id" | "timestamp"> }
   | { type: "REMOVE_ITEM"; payload: string }
   | { type: "CLEAR_HISTORY" }
   | { type: "TOGGLE_PIN"; payload: string }
   | { type: "SET_MONITORING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
-  | { type: "REORDER_ITEMS"; payload: ClipboardItem[] };
+  | { type: "REORDER_ITEMS"; payload: ItemType[] };
 
 /**
  * Initial state
@@ -48,7 +49,7 @@ function clipboardReducer(
 ): ClipboardHistoryState {
   switch (action.type) {
     case "ADD_ITEM": {
-      const newItem: ClipboardItem = {
+      const newItem: ItemType = {
         ...action.payload,
         id: crypto.randomUUID(),
         timestamp: Date.now(),
@@ -132,12 +133,9 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
   /**
    * Add item to clipboard history
    */
-  const addItem = useCallback(
-    (item: Omit<ClipboardItem, "id" | "timestamp">) => {
-      dispatch({ type: "ADD_ITEM", payload: item });
-    },
-    [],
-  );
+  const addItem = useCallback((item: Omit<ItemType, "id" | "timestamp">) => {
+    dispatch({ type: "ADD_ITEM", payload: item });
+  }, []);
 
   /**
    * Remove item from history
@@ -163,24 +161,33 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
   /**
    * Copy to system clipboard using clipboard API
    */
-  const copyToClipboard = useCallback(async (content: string) => {
-    try {
-      // Try using the Tauri clipboard plugin
-      const clipboard = await import("tauri-plugin-clipboard-api");
-      await clipboard.writeText(content);
-    } catch (error) {
-      // Fallback to browser clipboard API
+  const copyToClipboard = useCallback(
+    async (content: string, type: ItemType["type"] = "text") => {
       try {
-        await navigator.clipboard.writeText(content);
-      } catch (err) {
-        dispatch({
-          type: "SET_ERROR",
-          payload: "Failed to copy to clipboard",
-        });
-        throw err;
+        if (type === "text") {
+          await clipboard.writeText(content);
+        } else if (type === "html") {
+          await clipboard.writeHtml(content);
+        } else if (type === "image") {
+          await clipboard.writeImageBase64(content);
+        } else {
+          throw new Error("Unsupported content type for clipboard");
+        }
+      } catch (error) {
+        // Fallback to browser clipboard API
+        try {
+          await navigator.clipboard.writeText(content);
+        } catch (err) {
+          dispatch({
+            type: "SET_ERROR",
+            payload: "Failed to copy to clipboard",
+          });
+          throw err;
+        }
       }
-    }
-  }, []);
+    },
+    [],
+  );
 
   /**
    * Start monitoring clipboard

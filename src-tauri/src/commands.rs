@@ -95,6 +95,8 @@ pub fn update_clipboard_item(
 #[tauri::command]
 pub fn delete_clipboard_item(id: String, db: State<'_, DatabaseService>) -> Result<bool, String> {
     db.delete_item(&id).map_err(|e| e.to_string())?;
+
+    log::info!("Deleted item with id: {}", id);
     Ok(true)
 }
 
@@ -104,6 +106,7 @@ pub fn delete_clipboard_item(id: String, db: State<'_, DatabaseService>) -> Resu
 #[tauri::command]
 pub fn clear_clipboard_history(db: State<'_, DatabaseService>) -> Result<bool, String> {
     db.delete_all().map_err(|e| e.to_string())?;
+    log::info!("Cleared all clipboard history");
     Ok(true)
 }
 

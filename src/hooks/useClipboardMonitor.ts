@@ -22,7 +22,6 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
     try {
       // Create text update listener
       const unlistenText = await clipboard.onTextUpdate((text: string) => {
-        console.log({ text });
         if (text && text.trim()) {
           const item = {
             content: text,

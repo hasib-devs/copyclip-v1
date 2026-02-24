@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ClipboardItem } from "@/types/clipboard";
+import { ItemType } from "@/types/clipboard";
 
 /**
  * Database service
@@ -9,7 +9,7 @@ export const databaseService = {
   /**
    * Save clipboard item to database
    */
-  async saveItem(item: Omit<ClipboardItem, "id" | "timestamp">): Promise<boolean> {
+  async saveItem(item: Omit<ItemType, "id" | "timestamp">): Promise<boolean> {
     try {
       const id = crypto.randomUUID();
       const result = await invoke<boolean>("save_clipboard_item", {
@@ -35,7 +35,7 @@ export const databaseService = {
     isPinned?: boolean,
     limit: number = 100,
     offset: number = 0,
-  ): Promise<ClipboardItem[]> {
+  ): Promise<ItemType[]> {
     try {
       const items = await invoke<any[]>("get_clipboard_items", {
         search: search || null,
@@ -64,7 +64,7 @@ export const databaseService = {
   /**
    * Get single item by id
    */
-  async getItem(id: string): Promise<ClipboardItem | null> {
+  async getItem(id: string): Promise<ItemType | null> {
     try {
       const item = await invoke<any | null>("get_clipboard_item", { id });
       if (!item) return null;
@@ -101,10 +101,13 @@ export const databaseService = {
    */
   async deleteItem(id: string): Promise<boolean> {
     try {
-      return await invoke<boolean>("delete_clipboard_item", { id });
+      console.log("Deleting item from database:", id);
+      const result = await invoke<boolean>("delete_clipboard_item", { id });
+      console.log("Delete result:", result);
+      return result;
     } catch (error) {
       console.error("Failed to delete item:", error);
-      return false;
+      throw error; // Re-throw to catch in UI
     }
   },
 
@@ -135,7 +138,7 @@ export const databaseService = {
   /**
    * Load all items on app startup
    */
-  async loadInitialHistory(): Promise<ClipboardItem[]> {
+  async loadInitialHistory(): Promise<ItemType[]> {
     try {
       const items = await invoke<any[]>("load_initial_history");
 
