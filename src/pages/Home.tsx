@@ -258,6 +258,8 @@ const Home = () => {
                     size="sm"
                     onClick={() => handleDelete(item.id)}
                     className="text-slate-600 hover:text-red-600 hover:bg-red-50"
+                    disabled={item.isPinned}
+                    title={item.isPinned ? "Unpin to delete" : "Delete"}
                   >
                     <Trash2 size={16} />
                   </Button>

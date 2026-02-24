@@ -34,7 +34,12 @@ const Settings = () => {
 
       {/* Settings Sections */}
       <div className="flex-1 overflow-y-auto">
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion
+          type="single"
+          collapsible
+          value={"general"}
+          className="w-full"
+        >
           {/* General Section */}
           <AccordionItem value="general" className="border-b border-slate-200">
             <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
