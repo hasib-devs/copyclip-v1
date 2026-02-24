@@ -16,7 +16,7 @@ const Navigation = () => {
   return (
     <nav
       className={cn(
-        "flex items-center justify-center gap-0",
+        "flex items-center justify-evenly gap-0",
         "bg-white border-b border-slate-200",
         "overflow-x-auto",
       )}
@@ -30,7 +30,7 @@ const Navigation = () => {
             to={to}
             className={cn(
               "flex flex-col items-center justify-center gap-1",
-              "px-4 py-3 min-w-fit",
+              "min-w-fit px-1 pt-3 pb-1",
               "text-xs font-medium transition-colors",
               "border-b-2",
               isActive
