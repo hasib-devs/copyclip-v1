@@ -20,8 +20,7 @@ import { ItemType } from "@/types/clipboard.types";
  * Handles event listener cleanup properly
  */
 export const useClipboardMonitor = (enabled: boolean = true) => {
-  const { addItem, setError, startMonitoring, stopMonitoring, pausedCopying } =
-    useClipboard();
+  const { addItem, setError, startMonitoring, stopMonitoring } = useClipboard();
 
   // Keep track of unlisteners to clean them up
   const unlistenersRef = useRef<Array<() => void>>([]);
@@ -34,7 +33,7 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
       console.info("[CLIPBOARD] Setting up clipboard listeners...");
       // Create text update listener
       const unlistenText = await onTextUpdate((text: string) => {
-        if (text && text.trim() && !pausedCopying) {
+        if (text && text.trim()) {
           const item: ItemType = {
             content: text,
             type: "text" as const,
@@ -57,7 +56,7 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
 
       // Create image update listener
       const unlistenImage = await onImageUpdate((base64: string) => {
-        if (base64 && !pausedCopying) {
+        if (base64) {
           const item: ItemType = {
             content: "[Image]",
             type: "image_base64" as const,
@@ -78,7 +77,7 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
 
       // Create HTML update listener
       const unlistenHtml = await onHTMLUpdate((html: string) => {
-        if (html && html.trim() && !pausedCopying) {
+        if (html && html.trim()) {
           const item = {
             content: html,
             type: "html" as const,
@@ -98,7 +97,7 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
 
       // Create file update listener
       const unlistenFiles = await onFilesUpdate((files: string[]) => {
-        if (files && files.length > 0 && !pausedCopying) {
+        if (files && files.length > 0) {
           const item: ItemType = {
             content: files.join(", "),
             type: "file" as const,
@@ -119,17 +118,21 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
 
       // onRTFUpdate, onImageBinaryUpdate, onSomethingUpdate can be added similarly if needed
       const unlistenRTF = await onRTFUpdate((rtf: string) => {
-        console.info("[CLIPBOARD] RTF update received, ignoring for now");
+        console.info("[CLIPBOARD] RTF update received, ignoring for now", rtf);
       });
 
       const unlistenImageBinary = await onImageBinaryUpdate((data: any) => {
         console.info(
           "[CLIPBOARD] Image binary update received, ignoring for now",
+          data,
         );
       });
 
       const unlistenSomething = await onSomethingUpdate((data: any) => {
-        console.info("[CLIPBOARD] Something update received, ignoring for now");
+        console.info(
+          "[CLIPBOARD] Something update received, ignoring for now",
+          data,
+        );
       });
 
       // Start listening for clipboard events

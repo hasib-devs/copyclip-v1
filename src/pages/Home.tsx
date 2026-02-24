@@ -4,7 +4,7 @@ import { useClipboard } from "@/hooks/useClipboard";
 import { cn } from "@/lib/utils";
 import { databaseService } from "@/services/databaseService";
 import { ItemType } from "@/types/clipboard.types";
-import { confirm } from "@tauri-apps/plugin-dialog";
+import { ask, confirm } from "@tauri-apps/plugin-dialog";
 import {
   Activity,
   AlertCircle,
@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const Home = () => {
   // Search query state
@@ -129,7 +130,7 @@ const Home = () => {
                 )}
               />
               <span className="text-xs w-22 text-slate-600">
-                {isMonitoring ? "Monitoring" : "Not monitoring"}
+                {isMonitoring ? "Monitoring" : "Stopped"}
               </span>
               <span className="text-xs w-22 text-slate-600">
                 {pausedCopying ? " (Paused)" : "Neutral"}
@@ -143,8 +144,25 @@ const Home = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={isMonitoring ? stopMonitoring : startMonitoring}
-            className="text-slate-600 hover:text-red-600"
+            onClick={async () => {
+              if (isMonitoring) {
+                const confirmed = await ask(
+                  "Are you sure you want to stop monitoring the clipboard? This will pause all clipboard tracking until you start it again.",
+                  "Stop Monitoring",
+                );
+                if (!confirmed) return;
+
+                await stopMonitoring();
+                toast.success("Clipboard monitoring stopped");
+              } else {
+                await startMonitoring();
+                toast.success("Clipboard monitoring started");
+              }
+            }}
+            className={cn("text-slate-600", {
+              "hover:bg-red-50 hover:text-red-600": isMonitoring,
+              "hover:bg-green-50 hover:text-green-600": !isMonitoring,
+            })}
           >
             {isMonitoring ? "Stop" : "Start"}
           </Button>
@@ -247,7 +265,7 @@ const Home = () => {
                 <div className="flex items-center justify-end gap-2">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     onClick={() => handleCopy(item.content, item.type, item.id)}
                     disabled={!!copyingId}
                     className={cn(
@@ -266,7 +284,7 @@ const Home = () => {
 
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="xs"
                     onClick={() => handleTogglePin(item.id, item.isPinned)}
                     className={cn(
                       "h-8 w-8 p-0",
@@ -281,7 +299,7 @@ const Home = () => {
 
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     onClick={() => handleDelete(item.id)}
                     className="text-slate-600 hover:text-red-600 hover:bg-red-50"
                     disabled={item.isPinned}
