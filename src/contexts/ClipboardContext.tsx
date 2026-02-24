@@ -28,8 +28,8 @@ type ClipboardAction =
   | { type: "TOGGLE_PIN"; payload: string }
   | { type: "SET_MONITORING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
-  | { type: "REORDER_ITEMS"; payload: ItemType[] };
-
+  | { type: "REORDER_ITEMS"; payload: ItemType[] }
+  | { type: "INITIALIZE_ITEMS"; payload: ItemType[] };
 /**
  * Initial state
  */
@@ -107,6 +107,11 @@ function clipboardReducer(
         items: [...pinnedItems, ...unpinnedItems],
       };
 
+    case "INITIALIZE_ITEMS":
+      return {
+        ...state,
+        items: action.payload,
+      };
     default:
       return state;
   }
@@ -129,6 +134,14 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
     ...initialState,
     maxItems,
   });
+
+  /**
+   * Initialize items (used for loading from database)
+   */
+
+  const initializeItems = useCallback((items: ItemType[]) => {
+    dispatch({ type: "INITIALIZE_ITEMS", payload: items });
+  }, []);
 
   /**
    * Add item to clipboard history
@@ -275,6 +288,7 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
     getPinnedItems,
     setError,
     getPaginatedItems,
+    initializeItems,
   };
 
   return (
