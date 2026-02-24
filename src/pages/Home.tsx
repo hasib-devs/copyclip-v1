@@ -67,8 +67,6 @@ const Home = () => {
     } catch (error) {
       console.error("Delete error:", error);
       setError("Failed to delete item from database");
-      // Re-add item if delete failed
-      // Note: You may want to reload from database here
     }
   };
 

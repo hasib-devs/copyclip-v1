@@ -23,21 +23,65 @@ pub fn save_clipboard_item(
     file_paths: Option<String>,
     db: State<'_, DatabaseService>,
 ) -> Result<bool, String> {
+    eprintln!(
+        "[SAVE] Attempting to save item with id: {}, type: {}, content length: {}",
+        id,
+        item_type,
+        content.len()
+    );
+
     // Check for duplicate
-    let is_duplicate = db
-        .check_duplicate(&content, &item_type)
-        .map_err(|e| e.to_string())?;
+    eprintln!("[SAVE] Checking for duplicates...");
+    let is_duplicate = match db.check_duplicate(&content, &item_type) {
+        Ok(is_dup) => {
+            eprintln!("[SAVE] Duplicate check result: {}", is_dup);
+            is_dup
+        }
+        Err(e) => {
+            eprintln!("[SAVE] ERROR in duplicate check: {}", e);
+            return Err(format!("Failed to check duplicate: {}", e));
+        }
+    };
+
+    eprintln!("[SAVE] Is duplicate: {}", is_duplicate);
 
     if is_duplicate {
+        eprintln!("[SAVE] Item is duplicate, skipping save");
         return Ok(false); // Duplicate item, not saved
     }
 
-    let item = ClipboardItemModel::new(id, content, item_type, image_base64, file_paths);
+    let item = ClipboardItemModel::new(
+        id.clone(),
+        content.clone(),
+        item_type.clone(),
+        image_base64.clone(),
+        file_paths.clone(),
+    );
 
-    db.create_item(item).map_err(|e| e.to_string())?;
+    eprintln!("[SAVE] Creating item model: {:?}", id);
 
+    match db.create_item(item) {
+        Ok(rows) => {
+            eprintln!("[SAVE] Item created successfully, rows affected: {}", rows);
+        }
+        Err(e) => {
+            eprintln!("[SAVE] ERROR creating item: {}", e);
+            return Err(format!("Failed to create item: {}", e));
+        }
+    }
+
+    eprintln!("[SAVE] Enforcing max items limit...");
     // Enforce max items limit (100)
-    db.enforce_max_items(100).map_err(|e| e.to_string())?;
+    match db.enforce_max_items(100) {
+        Ok(deleted) => {
+            eprintln!("[SAVE] Enforced max items, deleted {} old items", deleted);
+        }
+        Err(e) => {
+            eprintln!("[SAVE] ERROR enforcing max items: {}", e);
+        }
+    }
+
+    eprintln!("[SAVE] Item saved successfully");
 
     Ok(true) // Item saved successfully
 }
@@ -94,10 +138,26 @@ pub fn update_clipboard_item(
  */
 #[tauri::command]
 pub fn delete_clipboard_item(id: String, db: State<'_, DatabaseService>) -> Result<bool, String> {
-    db.delete_item(&id).map_err(|e| e.to_string())?;
+    eprintln!("[DELETE] ========================================");
+    eprintln!("[DELETE] Attempting to delete item with id: {}", id);
+    eprintln!("[DELETE] ========================================");
 
-    log::info!("Deleted item with id: {}", id);
-    Ok(true)
+    match db.delete_item(&id) {
+        Ok(rows_affected) => {
+            eprintln!("[DELETE] Successfully executed delete query");
+            eprintln!("[DELETE] Rows affected: {}", rows_affected);
+            if rows_affected == 0 {
+                eprintln!("[DELETE] WARNING: No rows were deleted. Item may not exist in DB");
+            }
+            eprintln!("[DELETE] ========================================");
+            Ok(true)
+        }
+        Err(e) => {
+            eprintln!("[DELETE] ERROR: Failed to delete item {}: {}", id, e);
+            eprintln!("[DELETE] ========================================");
+            Err(format!("Failed to delete item: {}", e))
+        }
+    }
 }
 
 /**

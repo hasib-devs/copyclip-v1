@@ -73,8 +73,14 @@ impl DatabaseService {
      * Create a new clipboard item
      */
     pub fn create_item(&self, item: ClipboardItemModel) -> SqliteResult<usize> {
+        eprintln!(
+            "[DB::CREATE] Creating item: id={}, type={}",
+            item.id, item.item_type
+        );
         let conn = self.conn.lock().unwrap();
-        conn.execute(
+        eprintln!("[DB::CREATE] Database lock acquired");
+
+        let result = conn.execute(
             r#"
             INSERT INTO clipboard_items 
             (id, content, item_type, is_pinned, timestamp, image_base64, file_paths, created_at, updated_at)
@@ -91,7 +97,13 @@ impl DatabaseService {
                 item.created_at,
                 item.updated_at,
             ],
-        )
+        ).map_err(|e| {
+            eprintln!("[DB::CREATE] ERROR inserting item: {}", e);
+            e
+        })?;
+
+        eprintln!("[DB::CREATE] Item inserted successfully, rows: {}", result);
+        Ok(result)
     }
 
     /**
@@ -193,11 +205,43 @@ impl DatabaseService {
      * Delete item by id
      */
     pub fn delete_item(&self, id: &str) -> SqliteResult<usize> {
+        eprintln!("[DB::DELETE] Starting delete operation for id: {}", id);
+
         let conn = self.conn.lock().unwrap();
-        conn.execute(
-            "DELETE FROM clipboard_items WHERE id = ?",
-            rusqlite::params![id],
-        )
+        eprintln!("[DB::DELETE] Acquired database lock");
+
+        // Check if item exists first
+        let mut check_stmt = conn
+            .prepare("SELECT id FROM clipboard_items WHERE id = ? LIMIT 1")
+            .map_err(|e| {
+                eprintln!("[DB::DELETE] Error preparing check query: {}", e);
+                e
+            })?;
+
+        let exists = check_stmt.exists(rusqlite::params![id]).map_err(|e| {
+            eprintln!("[DB::DELETE] Error checking if item exists: {}", e);
+            e
+        })?;
+
+        eprintln!("[DB::DELETE] Item exists in database: {}", exists);
+        drop(check_stmt);
+
+        // Perform the delete
+        let result = conn
+            .execute(
+                "DELETE FROM clipboard_items WHERE id = ?",
+                rusqlite::params![id],
+            )
+            .map_err(|e| {
+                eprintln!("[DB::DELETE] Error executing delete: {}", e);
+                e
+            })?;
+
+        eprintln!(
+            "[DB::DELETE] Delete query completed. Rows affected: {}",
+            result
+        );
+        Ok(result)
     }
 
     /**
@@ -251,14 +295,31 @@ impl DatabaseService {
      * Check if item with same content exists (for deduplication)
      */
     pub fn check_duplicate(&self, content: &str, item_type: &str) -> SqliteResult<bool> {
+        eprintln!(
+            "[DB::CHECK_DUP] Checking duplicate: type={}, content_len={}",
+            item_type,
+            content.len()
+        );
         let conn = self.conn.lock().unwrap();
+        eprintln!("[DB::CHECK_DUP] Database lock acquired");
+
         let mut stmt = conn.prepare(
             "SELECT COUNT(*) FROM clipboard_items WHERE content = ? AND item_type = ? ORDER BY timestamp DESC LIMIT 1"
-        )?;
-
-        let count = stmt.query_row(rusqlite::params![content, item_type], |row| {
-            row.get::<_, i64>(0)
+        ).map_err(|e| {
+            eprintln!("[DB::CHECK_DUP] ERROR preparing query: {}", e);
+            e
         })?;
+
+        let count = stmt
+            .query_row(rusqlite::params![content, item_type], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|e| {
+                eprintln!("[DB::CHECK_DUP] ERROR querying: {}", e);
+                e
+            })?;
+
+        eprintln!("[DB::CHECK_DUP] Query result: count={}", count);
         Ok(count > 0)
     }
 }

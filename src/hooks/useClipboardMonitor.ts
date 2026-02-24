@@ -22,17 +22,26 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
     try {
       // Create text update listener
       const unlistenText = await clipboard.onTextUpdate((text: string) => {
+        console.log("[CLIPBOARD] Text update triggered. Length:", text?.length);
         if (text && text.trim()) {
+          console.log("[CLIPBOARD] Text is valid, creating item");
           const item = {
             content: text,
             type: "text" as const,
             isPinned: false,
           };
+          console.log("[CLIPBOARD] Adding to React state");
           addItem(item);
           // Save to database asynchronously
+          console.log("[CLIPBOARD] Calling databaseService.saveItem()");
           databaseService
             .saveItem(item)
-            .catch((err) => console.error("Failed to save text to DB:", err));
+            .then((result) => console.log("[CLIPBOARD] Save result:", result))
+            .catch((err) =>
+              console.error("[CLIPBOARD] Failed to save text to DB:", err),
+            );
+        } else {
+          console.log("[CLIPBOARD] Text is empty or whitespace only");
         }
       });
 

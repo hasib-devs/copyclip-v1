@@ -12,6 +12,14 @@ export const databaseService = {
   async saveItem(item: Omit<ItemType, "id" | "timestamp">): Promise<boolean> {
     try {
       const id = crypto.randomUUID();
+      console.log(
+        "[DB-SERVICE] Calling save_clipboard_item. ID:",
+        id,
+        "Type:",
+        item.type,
+        "Content length:",
+        item.content.length,
+      );
       const result = await invoke<boolean>("save_clipboard_item", {
         id,
         content: item.content,
@@ -19,9 +27,10 @@ export const databaseService = {
         imageBase64: item.imageBase64 || null,
         filePaths: item.filePaths ? JSON.stringify(item.filePaths) : null,
       });
+      console.log("[DB-SERVICE] save_clipboard_item returned:", result);
       return result;
     } catch (error) {
-      console.error("Failed to save item:", error);
+      console.error("[DB-SERVICE] Failed to save item:", error);
       return false;
     }
   },
