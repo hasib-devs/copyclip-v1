@@ -1,7 +1,18 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useClipboard } from "./useClipboard";
-import clipboard from "tauri-plugin-clipboard-api";
+import {
+  onTextUpdate,
+  onImageUpdate,
+  onRTFUpdate,
+  onImageBinaryUpdate,
+  onSomethingUpdate,
+  onHTMLUpdate,
+  onFilesUpdate,
+  startListening,
+  onClipboardUpdate,
+} from "tauri-plugin-clipboard-api";
 import { databaseService } from "@/services/databaseService";
+import { ItemType } from "@/types/clipboard.types";
 
 /**
  * Custom hook to monitor clipboard changes
@@ -9,7 +20,8 @@ import { databaseService } from "@/services/databaseService";
  * Handles event listener cleanup properly
  */
 export const useClipboardMonitor = (enabled: boolean = true) => {
-  const { addItem, setError, startMonitoring, stopMonitoring } = useClipboard();
+  const { addItem, setError, startMonitoring, stopMonitoring, pausedCopying } =
+    useClipboard();
 
   // Keep track of unlisteners to clean them up
   const unlistenersRef = useRef<Array<() => void>>([]);
@@ -18,85 +30,110 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
    * Set up clipboard event listeners
    */
   const setupListeners = useCallback(async () => {
-    console.log("Setting up clipboard listeners...");
     try {
+      console.info("[CLIPBOARD] Setting up clipboard listeners...");
       // Create text update listener
-      const unlistenText = await clipboard.onTextUpdate((text: string) => {
-        console.log("[CLIPBOARD] Text update triggered. Length:", text?.length);
-        if (text && text.trim()) {
-          console.log("[CLIPBOARD] Text is valid, creating item");
-          const item = {
+      const unlistenText = await onTextUpdate((text: string) => {
+        if (text && text.trim() && !pausedCopying) {
+          const item: ItemType = {
             content: text,
             type: "text" as const,
             isPinned: false,
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
           };
-          console.log("[CLIPBOARD] Adding to React state");
           addItem(item);
           // Save to database asynchronously
-          console.log("[CLIPBOARD] Calling databaseService.saveItem()");
           databaseService
             .saveItem(item)
-            .then((result) => console.log("[CLIPBOARD] Save result:", result))
+            .then((result) => console.info("[CLIPBOARD] Save result:", result))
             .catch((err) =>
               console.error("[CLIPBOARD] Failed to save text to DB:", err),
             );
         } else {
-          console.log("[CLIPBOARD] Text is empty or whitespace only");
+          console.info("[CLIPBOARD] Text is empty or whitespace only");
         }
       });
 
       // Create image update listener
-      const unlistenImage = await clipboard.onImageUpdate((base64: string) => {
-        if (base64) {
-          const item = {
+      const unlistenImage = await onImageUpdate((base64: string) => {
+        if (base64 && !pausedCopying) {
+          const item: ItemType = {
             content: "[Image]",
-            type: "image" as const,
+            type: "image_base64" as const,
             isPinned: false,
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
             imageBase64: base64,
           };
           addItem(item);
           // Save to database asynchronously
           databaseService
             .saveItem(item)
-            .catch((err) => console.error("Failed to save image to DB:", err));
+            .catch((err) =>
+              console.error("[CLIPBOARD] Failed to save image to DB:", err),
+            );
         }
       });
 
       // Create HTML update listener
-      const unlistenHtml = await clipboard.onHTMLUpdate((html: string) => {
-        if (html && html.trim()) {
+      const unlistenHtml = await onHTMLUpdate((html: string) => {
+        if (html && html.trim() && !pausedCopying) {
           const item = {
             content: html,
             type: "html" as const,
             isPinned: false,
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
           };
           addItem(item);
           // Save to database asynchronously
           databaseService
             .saveItem(item)
-            .catch((err) => console.error("Failed to save HTML to DB:", err));
+            .catch((err) =>
+              console.error("[CLIPBOARD] Failed to save HTML to DB:", err),
+            );
         }
       });
 
       // Create file update listener
-      const unlistenFiles = await clipboard.onFilesUpdate((files: string[]) => {
-        if (files && files.length > 0) {
-          const item = {
+      const unlistenFiles = await onFilesUpdate((files: string[]) => {
+        if (files && files.length > 0 && !pausedCopying) {
+          const item: ItemType = {
             content: files.join(", "),
             type: "file" as const,
             isPinned: false,
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
             filePaths: files,
           };
           addItem(item);
           // Save to database asynchronously
           databaseService
             .saveItem(item)
-            .catch((err) => console.error("Failed to save files to DB:", err));
+            .catch((err) =>
+              console.error("[CLIPBOARD] Failed to save files to DB:", err),
+            );
         }
       });
 
+      // onRTFUpdate, onImageBinaryUpdate, onSomethingUpdate can be added similarly if needed
+      const unlistenRTF = await onRTFUpdate((rtf: string) => {
+        console.info("[CLIPBOARD] RTF update received, ignoring for now");
+      });
+
+      const unlistenImageBinary = await onImageBinaryUpdate((data: any) => {
+        console.info(
+          "[CLIPBOARD] Image binary update received, ignoring for now",
+        );
+      });
+
+      const unlistenSomething = await onSomethingUpdate((data: any) => {
+        console.info("[CLIPBOARD] Something update received, ignoring for now");
+      });
+
       // Start listening for clipboard events
-      const unlistenClipboard = await clipboard.startListening();
+      const unlistenClipboard = await startListening();
 
       // Store unlisteners for cleanup
       unlistenersRef.current = [
@@ -104,15 +141,19 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
         unlistenImage as () => void,
         unlistenHtml as () => void,
         unlistenFiles as () => void,
+        unlistenRTF as () => void,
+        unlistenImageBinary as () => void,
+        unlistenSomething as () => void,
         unlistenClipboard as () => void,
       ];
 
       await startMonitoring();
+      console.info("[CLIPBOARD] Listeners set up successfully");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       setError(`Failed to set up clipboard monitoring: ${errorMessage}`);
-      console.error("Clipboard monitoring setup error:", error);
+      console.error("[CLIPBOARD] Error setting up listeners:", error);
     }
   }, [addItem, startMonitoring, setError]);
 
@@ -121,20 +162,29 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
    */
   const cleanup = useCallback(async () => {
     try {
+      console.info("[CLIPBOARD] Cleaning up listeners...");
       // Call all unlisteners
       unlistenersRef.current.forEach((unlisten) => {
         try {
           unlisten();
         } catch (err) {
-          console.error("Unlisten error:", err);
+          console.error("[CLIPBOARD] Unlisten error:", err);
         }
       });
       unlistenersRef.current = [];
       await stopMonitoring();
+      console.info("[CLIPBOARD] Listeners cleaned up successfully");
     } catch (error) {
-      console.error("Error during clipboard listener cleanup:", error);
+      console.error(
+        "[CLIPBOARD] Error during clipboard listener cleanup:",
+        error,
+      );
     }
   }, [stopMonitoring]);
+
+  onClipboardUpdate(() => {
+    console.info("[CLIPBOARD] Clipboard updated");
+  });
 
   // Set up listeners when component mounts or when enabled changes
   useEffect(() => {

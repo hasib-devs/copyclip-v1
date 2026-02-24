@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ItemType } from "@/types/clipboard";
+import { ItemType } from "@/types/clipboard.types";
 
 /**
  * Database service
@@ -9,28 +9,15 @@ export const databaseService = {
   /**
    * Save clipboard item to database
    */
-  async saveItem(item: Omit<ItemType, "id" | "timestamp">): Promise<boolean> {
+  async saveItem(item: ItemType): Promise<boolean> {
     try {
-      const id = crypto.randomUUID();
-      console.log(
-        "[DB-SERVICE] Calling save_clipboard_item. ID:",
-        id,
-        "Type:",
-        item.type,
-        "Content length:",
-        item.content.length,
-      );
       const result = await invoke<boolean>("save_clipboard_item", {
-        id,
-        content: item.content,
-        itemType: item.type,
+        ...item,
         imageBase64: item.imageBase64 || null,
         filePaths: item.filePaths ? JSON.stringify(item.filePaths) : null,
       });
-      console.log("[DB-SERVICE] save_clipboard_item returned:", result);
       return result;
     } catch (error) {
-      console.error("[DB-SERVICE] Failed to save item:", error);
       return false;
     }
   },
@@ -56,12 +43,7 @@ export const databaseService = {
 
       // Map database items to frontend format
       return items.map((item) => ({
-        id: item.id,
-        content: item.content,
-        type: item.item_type as "text" | "image" | "html" | "file",
-        timestamp: item.timestamp,
-        isPinned: item.is_pinned,
-        imageBase64: item.image_base64,
+        ...item,
         filePaths: item.file_paths ? JSON.parse(item.file_paths) : undefined,
       }));
     } catch (error) {
@@ -79,12 +61,7 @@ export const databaseService = {
       if (!item) return null;
 
       return {
-        id: item.id,
-        content: item.content,
-        type: item.item_type as "text" | "image" | "html" | "file",
-        timestamp: item.timestamp,
-        isPinned: item.is_pinned,
-        imageBase64: item.image_base64,
+        ...item,
         filePaths: item.file_paths ? JSON.parse(item.file_paths) : undefined,
       };
     } catch (error) {
@@ -96,7 +73,7 @@ export const databaseService = {
   /**
    * Update item (toggle pin status)
    */
-  async updateItem(id: string, isPinned: boolean): Promise<boolean> {
+  async updatePined(id: string, isPinned: boolean): Promise<boolean> {
     try {
       return await invoke<boolean>("update_clipboard_item", { id, isPinned });
     } catch (error) {
@@ -110,9 +87,9 @@ export const databaseService = {
    */
   async deleteItem(id: string): Promise<boolean> {
     try {
-      console.log("Deleting item from database:", id);
+      console.info("Deleting item from database:", id);
       const result = await invoke<boolean>("delete_clipboard_item", { id });
-      console.log("Delete result:", result);
+      console.info("Delete result:", result);
       return result;
     } catch (error) {
       console.error("Failed to delete item:", error);
@@ -152,12 +129,7 @@ export const databaseService = {
       const items = await invoke<any[]>("load_initial_history");
 
       return items.map((item) => ({
-        id: item.id,
-        content: item.content,
-        type: item.item_type as "text" | "image" | "html" | "file",
-        timestamp: item.timestamp,
-        isPinned: item.is_pinned,
-        imageBase64: item.image_base64,
+        ...item,
         filePaths: item.file_paths ? JSON.parse(item.file_paths) : undefined,
       }));
     } catch (error) {

@@ -3,28 +3,34 @@ import { Input } from "@/components/ui/input";
 import { useClipboard } from "@/hooks/useClipboard";
 import { cn } from "@/lib/utils";
 import { databaseService } from "@/services/databaseService";
-import { ItemType } from "@/types/clipboard";
+import { ItemType } from "@/types/clipboard.types";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import {
   Activity,
   AlertCircle,
+  CheckIcon,
   Copy,
   Pin,
   PinOff,
   Search,
   Trash2,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 const Home = () => {
   // Search query state
   const [searchQuery, setSearchQuery] = useState("");
+  // Track which item is being copied (for disabling button)
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+  // Track recently copied item for feedback
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Get clipboard context
   const {
     items,
     isMonitoring,
     error,
+    pausedCopying,
     removeItem,
     togglePin,
     copyToClipboard,
@@ -33,6 +39,7 @@ const Home = () => {
     setError,
     stopMonitoring,
     startMonitoring,
+    setPausedCopying,
   } = useClipboard();
 
   // Get displayed items
@@ -42,11 +49,25 @@ const Home = () => {
   const handleCopy = async (
     content: string,
     type: ItemType["type"] = "text",
+    itemId: string,
   ) => {
     try {
+      // Prevent multiple clicks - set copying state
+      setCopyingId(itemId);
+      setPausedCopying(true); // Pause monitoring to prevent loops
+
+      // Perform the copy
       await copyToClipboard(content, type);
+
+      // Auto-clear feedback after 2 seconds
+      setTimeout(() => {
+        setCopiedId(null);
+      }, 2500);
     } catch (err) {
       setError("Failed to copy to clipboard");
+    } finally {
+      // Clear loading state
+      setCopyingId(null);
     }
   };
 
@@ -73,7 +94,7 @@ const Home = () => {
   // Handle pin toggle with database persistence
   const handleTogglePin = async (id: string, isPinned: boolean) => {
     togglePin(id);
-    await databaseService.updateItem(id, !isPinned);
+    await databaseService.updatePined(id, !isPinned);
   };
 
   // Handle clear all
@@ -110,6 +131,9 @@ const Home = () => {
               <span className="text-xs w-22 text-slate-600">
                 {isMonitoring ? "Monitoring" : "Not monitoring"}
               </span>
+              <span className="text-xs w-22 text-slate-600">
+                {pausedCopying ? " (Paused)" : "Neutral"}
+              </span>
               <span className="text-xs text-slate-500 ml-2">
                 {displayedItems.length} items
               </span>
@@ -137,7 +161,6 @@ const Home = () => {
               <Input
                 placeholder="Search clipboard history..."
                 value={searchQuery}
-                defaultValue={""}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
                   "pl-10 bg-slate-50 border-slate-200",
@@ -199,7 +222,7 @@ const Home = () => {
               >
                 {/* Item Content */}
                 <div className="mb-3">
-                  {item.type === "image" && item.imageBase64 ? (
+                  {item.type === "image_base64" && item.imageBase64 ? (
                     <div className="flex items-center gap-2">
                       <img
                         src={`data:image/png;base64,${item.imageBase64}`}
@@ -225,11 +248,20 @@ const Home = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleCopy(item.content, item.type)}
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    onClick={() => handleCopy(item.content, item.type, item.id)}
+                    disabled={!!copyingId}
+                    className={cn(
+                      copiedId === item.id
+                        ? "text-green-600 border-green-200 bg-green-50"
+                        : "text-blue-600 border-blue-200 hover:bg-blue-50",
+                    )}
                   >
-                    <Copy size={16} className="mr-1" />
-                    Copy
+                    {copiedId === item.id ? (
+                      <CheckIcon size={16} />
+                    ) : (
+                      <Copy size={16} className="mr-1" />
+                    )}
+                    {copiedId === item.id ? "Copied!" : "Copy"}
                   </Button>
 
                   <Button

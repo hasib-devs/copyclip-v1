@@ -8,7 +8,7 @@ export interface ItemType {
   /** Clipboard content */
   content: string;
   /** Content type: text, html, image, file */
-  type: "text" | "html" | "image" | "file";
+  type: "text" | "html" | "image_base64" | "file";
   /** Timestamp when added */
   timestamp: number;
   /** Whether the item is pinned */
@@ -40,7 +40,7 @@ export interface ClipboardHistoryState {
  */
 export interface ClipboardContextType extends ClipboardHistoryState {
   /** Add item to beginning of history, manage max items */
-  addItem: (item: Omit<ItemType, "id" | "timestamp">) => void;
+  addItem: (item: ItemType) => void;
   /** Remove item by id */
   removeItem: (id: string) => void;
   /** Clear all history */
@@ -61,4 +61,8 @@ export interface ClipboardContextType extends ClipboardHistoryState {
   setError: (error: string | null) => void;
   /** Initialize items (used for loading from database) */
   initializeItems: (items: ItemType[]) => void;
+  /** Whether copying is paused (used to prevent loops) */
+  pausedCopying: boolean;
+  /** Set paused copying state */
+  setPausedCopying: (paused: boolean) => void;
 }

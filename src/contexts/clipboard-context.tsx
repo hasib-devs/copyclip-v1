@@ -1,17 +1,21 @@
-import React, {
-  createContext,
-  useCallback,
-  useReducer,
-  ReactNode,
-} from "react";
+import { clipboardReducer } from "@/hooks/clipboardReducer";
 import {
-  ItemType,
   ClipboardContextType,
   ClipboardHistoryState,
-} from "@/types/clipboard";
-import clipboard from "tauri-plugin-clipboard-api";
-
-import { toast } from "sonner";
+  ItemType,
+} from "@/types/clipboard.types";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useReducer,
+  useState,
+} from "react";
+import {
+  writeHtml,
+  writeImageBase64,
+  writeText,
+} from "tauri-plugin-clipboard-api";
 
 /**
  * Create the context
@@ -20,104 +24,12 @@ export const ClipboardContext = createContext<ClipboardContextType | undefined>(
   undefined,
 );
 
-/**
- * Action types for reducer
- */
-type ClipboardAction =
-  | { type: "ADD_ITEM"; payload: Omit<ItemType, "id" | "timestamp"> }
-  | { type: "REMOVE_ITEM"; payload: string }
-  | { type: "CLEAR_HISTORY" }
-  | { type: "TOGGLE_PIN"; payload: string }
-  | { type: "SET_MONITORING"; payload: boolean }
-  | { type: "SET_ERROR"; payload: string | null }
-  | { type: "REORDER_ITEMS"; payload: ItemType[] }
-  | { type: "INITIALIZE_ITEMS"; payload: ItemType[] };
-/**
- * Initial state
- */
 const initialState: ClipboardHistoryState = {
   items: [],
   isMonitoring: false,
   error: null,
   maxItems: 100,
 };
-
-/**
- * Reducer function to manage clipboard state
- */
-function clipboardReducer(
-  state: ClipboardHistoryState,
-  action: ClipboardAction,
-): ClipboardHistoryState {
-  switch (action.type) {
-    case "ADD_ITEM": {
-      const newItem: ItemType = {
-        ...action.payload,
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-      };
-
-      // Avoid duplicates - if same content was just added, don't add again
-      if (
-        state.items.length > 0 &&
-        state.items[0].content === newItem.content &&
-        newItem.type === state.items[0].type
-      ) {
-        return state;
-      }
-
-      // Keep at most maxItems
-      const newItems = [newItem, ...state.items].slice(0, state.maxItems);
-      return { ...state, items: newItems };
-    }
-
-    case "REMOVE_ITEM":
-      return {
-        ...state,
-        items: state.items.filter((item) => item.id !== action.payload),
-      };
-
-    case "CLEAR_HISTORY":
-      return { ...state, items: [] };
-
-    case "TOGGLE_PIN":
-      const updatedItems = state.items.map((item) =>
-        item.id === action.payload
-          ? { ...item, isPinned: !item.isPinned }
-          : item,
-      );
-      // Re-sort: pinned items first, then by timestamp DESC
-      const pinnedToggle = updatedItems.filter((item) => item.isPinned);
-      const unpinnedToggle = updatedItems.filter((item) => !item.isPinned);
-      return {
-        ...state,
-        items: [...pinnedToggle, ...unpinnedToggle],
-      };
-
-    case "SET_MONITORING":
-      return { ...state, isMonitoring: action.payload };
-
-    case "SET_ERROR":
-      return { ...state, error: action.payload };
-
-    case "REORDER_ITEMS":
-      // Ensure pinned items stay at top
-      const pinnedItems = action.payload.filter((item) => item.isPinned);
-      const unpinnedItems = action.payload.filter((item) => !item.isPinned);
-      return {
-        ...state,
-        items: [...pinnedItems, ...unpinnedItems],
-      };
-
-    case "INITIALIZE_ITEMS":
-      return {
-        ...state,
-        items: action.payload,
-      };
-    default:
-      return state;
-  }
-}
 
 /**
  * ClipboardProvider component
@@ -132,6 +44,8 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
   children,
   maxItems = 100,
 }) => {
+  const [pausedCopying, setPausedCopying] = useState(false);
+
   const [state, dispatch] = useReducer(clipboardReducer, {
     ...initialState,
     maxItems,
@@ -148,7 +62,7 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
   /**
    * Add item to clipboard history
    */
-  const addItem = useCallback((item: Omit<ItemType, "id" | "timestamp">) => {
+  const addItem = useCallback((item: ItemType) => {
     dispatch({ type: "ADD_ITEM", payload: item });
   }, []);
 
@@ -180,11 +94,11 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
     async (content: string, type: ItemType["type"] = "text") => {
       try {
         if (type === "text") {
-          await clipboard.writeText(content);
+          await writeText(content);
         } else if (type === "html") {
-          await clipboard.writeHtml(content);
-        } else if (type === "image") {
-          await clipboard.writeImageBase64(content);
+          await writeHtml(content);
+        } else if (type === "image_base64") {
+          await writeImageBase64(content);
         } else {
           throw new Error("Unsupported content type for clipboard");
         }
@@ -280,6 +194,8 @@ export const ClipboardProvider: React.FC<ClipboardProviderProps> = ({
     getPinnedItems,
     setError,
     initializeItems,
+    pausedCopying,
+    setPausedCopying,
   };
 
   return (

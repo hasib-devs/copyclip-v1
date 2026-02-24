@@ -1,5 +1,5 @@
 import { useClipboard } from "@/hooks/useClipboard";
-import { ItemType } from "@/types/clipboard";
+import { ItemType } from "@/types/clipboard.types";
 import EmojiPicker from "emoji-picker-react";
 
 const EmojiView = () => {

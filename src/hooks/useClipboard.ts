@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { ClipboardContext } from "@/contexts/clipboard-context";
-import { ClipboardContextType } from "@/types/clipboard";
+import { ClipboardContextType } from "@/types/clipboard.types";
 
 /**
  * Custom hook to access clipboard context
