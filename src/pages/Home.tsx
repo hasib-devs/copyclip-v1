@@ -12,8 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/hooks/useClipboard";
-import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
-
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [displayPage, setDisplayPage] = useState(0);
@@ -31,9 +29,6 @@ const Home = () => {
     clearHistory,
     setError,
   } = useClipboard();
-
-  // Set up clipboard monitoring
-  useClipboardMonitor(true);
 
   // Get displayed items
   const displayedItems = searchQuery.trim() ? searchItems(searchQuery) : items;
