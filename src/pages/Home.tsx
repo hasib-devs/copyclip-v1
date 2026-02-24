@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Activity,
 } from "lucide-react";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -77,10 +78,12 @@ const Home = () => {
   };
 
   // Handle clear all
-  const handleClearAll = () => {
-    if (
-      window.confirm("Are you sure you want to clear all clipboard history?")
-    ) {
+  const handleClearAll = async () => {
+    const confirmed = await confirm(
+      "Are you sure you want to clear all clipboard history?",
+      "Clear Clipboard",
+    );
+    if (confirmed) {
       clearHistory();
       databaseService.clearAll();
       setDisplayPage(0);

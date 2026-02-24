@@ -22,6 +22,7 @@
     "clipboard:allow-read-files",
     "clipboard:allow-write-files-uris",
     "clipboard:allow-has-files",
-    "clipboard:read-all"
+    "clipboard:read-all",
+    "dialog:default"
   ]
 }
