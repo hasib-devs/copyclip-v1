@@ -1,13 +1,6 @@
-import { Link, useLocation } from "react-router";
-import {
-  Clipboard,
-  Smile,
-  Code2,
-  BarChart3,
-  Settings,
-  NotebookIcon,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BarChart3, Clipboard, Code2, Settings, Smile } from "lucide-react";
+import { Link, useLocation } from "react-router";
 
 const Navigation = () => {
   const location = useLocation();
@@ -15,7 +8,6 @@ const Navigation = () => {
   const navItems = [
     { to: "/", icon: Clipboard, label: "Clipboard" },
     { to: "/emoji", icon: Smile, label: "Emoji" },
-    { to: "/tasks", icon: NotebookIcon, label: "Tasks" },
     { to: "/snippets", icon: Code2, label: "Snippets" },
     { to: "/stats", icon: BarChart3, label: "Stats" },
     { to: "/settings", icon: Settings, label: "Settings" },
@@ -24,7 +16,7 @@ const Navigation = () => {
   return (
     <nav
       className={cn(
-        "flex items-center gap-0 px-4 py-2",
+        "flex items-center justify-center gap-0",
         "bg-white border-b border-slate-200",
         "overflow-x-auto",
       )}

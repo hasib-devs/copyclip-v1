@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "Copyclip",
-        "width": 375,
-        "height": 812,
+        "width": 400,
+        "height": 720,
         "minWidth": 375,
-        "minHeight": 812,
+        "minHeight": 620,
         "resizable": false,
         "fullscreen": false,
         "decorations": false,
