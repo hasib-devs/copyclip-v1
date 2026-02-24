@@ -1,5 +1,12 @@
 import { Link, useLocation } from "react-router";
-import { Clipboard, Smile, Code2, BarChart3, Settings } from "lucide-react";
+import {
+  Clipboard,
+  Smile,
+  Code2,
+  BarChart3,
+  Settings,
+  NotebookIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Navigation = () => {
@@ -8,7 +15,8 @@ const Navigation = () => {
   const navItems = [
     { to: "/", icon: Clipboard, label: "Clipboard" },
     { to: "/emoji", icon: Smile, label: "Emoji" },
-    { to: "/tasks", icon: Code2, label: "Tasks" },
+    { to: "/tasks", icon: NotebookIcon, label: "Tasks" },
+    { to: "/snippets", icon: Code2, label: "Snippets" },
     { to: "/stats", icon: BarChart3, label: "Stats" },
     { to: "/settings", icon: Settings, label: "Settings" },
   ];
