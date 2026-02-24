@@ -78,13 +78,17 @@ function clipboardReducer(
       return { ...state, items: [] };
 
     case "TOGGLE_PIN":
+      const updatedItems = state.items.map((item) =>
+        item.id === action.payload
+          ? { ...item, isPinned: !item.isPinned }
+          : item,
+      );
+      // Re-sort: pinned items first, then by timestamp DESC
+      const pinnedToggle = updatedItems.filter((item) => item.isPinned);
+      const unpinnedToggle = updatedItems.filter((item) => !item.isPinned);
       return {
         ...state,
-        items: state.items.map((item) =>
-          item.id === action.payload
-            ? { ...item, isPinned: !item.isPinned }
-            : item,
-        ),
+        items: [...pinnedToggle, ...unpinnedToggle],
       };
 
     case "SET_MONITORING":

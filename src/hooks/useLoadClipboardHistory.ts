@@ -19,7 +19,8 @@ export const useLoadClipboardHistory = () => {
   const loadHistory = async () => {
     try {
       const dbItems = await databaseService.loadInitialHistory();
-      dbItems.forEach((item) => {
+      // Reverse to maintain DESC order (newest first) since addItem puts items at front
+      dbItems.reverse().forEach((item) => {
         addItem({
           content: item.content,
           type: item.type,

@@ -38,6 +38,9 @@ const Home = () => {
     displayPage * pageSize,
     (displayPage + 1) * pageSize,
   );
+
+  console.log({ paginatedItems });
+
   const totalPages = Math.ceil(displayedItems.length / pageSize);
 
   // Handle copy action
@@ -205,11 +208,10 @@ const Home = () => {
                   {item.type === "image" && item.imageBase64 ? (
                     <div className="flex items-center gap-2">
                       <img
-                        src={`data:image/png;base64,${item.imageBase64.substring(0, 100)}`}
+                        src={`data:image/png;base64,${item.imageBase64}`}
                         alt="clipboard content"
-                        className="h-12 w-12 object-cover rounded"
+                        className="object-cover rounded"
                       />
-                      <span className="text-sm text-slate-600">[Image]</span>
                     </div>
                   ) : (
                     <p
@@ -226,7 +228,7 @@ const Home = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2">
                   <Button
                     variant="outline"
                     size="sm"
