@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/hooks/useClipboard";
+import { databaseService } from "@/services/databaseService";
+
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [displayPage, setDisplayPage] = useState(0);
@@ -47,12 +49,25 @@ const Home = () => {
     }
   };
 
+  // Handle delete item with database persistence
+  const handleDelete = async (id: string) => {
+    removeItem(id);
+    await databaseService.deleteItem(id);
+  };
+
+  // Handle pin toggle with database persistence
+  const handleTogglePin = async (id: string, isPinned: boolean) => {
+    togglePin(id);
+    await databaseService.updateItem(id, !isPinned);
+  };
+
   // Handle clear all
   const handleClearAll = () => {
     if (
       window.confirm("Are you sure you want to clear all clipboard history?")
     ) {
       clearHistory();
+      databaseService.clearAll();
       setDisplayPage(0);
     }
   };
@@ -171,7 +186,7 @@ const Home = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => togglePin(item.id)}
+                      onClick={() => handleTogglePin(item.id, item.isPinned)}
                       className={cn(
                         "h-8 w-8 p-0",
                         item.isPinned
@@ -224,7 +239,7 @@ const Home = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => handleDelete(item.id)}
                     className="text-slate-600 hover:text-red-600 hover:bg-red-50"
                   >
                     <Trash2 size={16} />

@@ -1,6 +1,5 @@
 import Navigation from "@/components/Navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ClipboardProvider } from "@/contexts/ClipboardContext";
 import Emoji from "@/pages/emoji";
 import Home from "@/pages/home";
 import Settings from "@/pages/settings";
@@ -8,9 +7,13 @@ import Snippets from "@/pages/snippets";
 import Statistics from "@/pages/statistics";
 import { BrowserRouter, Route, Routes } from "react-router";
 import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
+import { useLoadClipboardHistory } from "@/hooks/useLoadClipboardHistory";
 import "./App.css";
 
 function App() {
+  // Load initial clipboard history from database
+  useLoadClipboardHistory();
+
   // Set up clipboard monitoring
   useClipboardMonitor(true);
 

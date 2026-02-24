@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useClipboard } from "./useClipboard";
+import clipboard from "tauri-plugin-clipboard-api";
+import { databaseService } from "@/services/databaseService";
 
 /**
  * Custom hook to monitor clipboard changes
@@ -17,51 +19,69 @@ export const useClipboardMonitor = (enabled: boolean = true) => {
    */
   const setupListeners = useCallback(async () => {
     try {
-      const clipboard = await import("tauri-plugin-clipboard-api");
-
       // Create text update listener
       const unlistenText = await clipboard.onTextUpdate((text: string) => {
         if (text && text.trim()) {
-          addItem({
+          const item = {
             content: text,
-            type: "text",
+            type: "text" as const,
             isPinned: false,
-          });
+          };
+          addItem(item);
+          // Save to database asynchronously
+          databaseService
+            .saveItem(item)
+            .catch((err) => console.error("Failed to save text to DB:", err));
         }
       });
 
       // Create image update listener
       const unlistenImage = await clipboard.onImageUpdate((base64: string) => {
         if (base64) {
-          addItem({
+          const item = {
             content: "[Image]",
-            type: "image",
+            type: "image" as const,
             isPinned: false,
             imageBase64: base64,
-          });
+          };
+          addItem(item);
+          // Save to database asynchronously
+          databaseService
+            .saveItem(item)
+            .catch((err) => console.error("Failed to save image to DB:", err));
         }
       });
 
       // Create HTML update listener
       const unlistenHtml = await clipboard.onHTMLUpdate((html: string) => {
         if (html && html.trim()) {
-          addItem({
+          const item = {
             content: html,
-            type: "html",
+            type: "html" as const,
             isPinned: false,
-          });
+          };
+          addItem(item);
+          // Save to database asynchronously
+          databaseService
+            .saveItem(item)
+            .catch((err) => console.error("Failed to save HTML to DB:", err));
         }
       });
 
       // Create file update listener
       const unlistenFiles = await clipboard.onFilesUpdate((files: string[]) => {
         if (files && files.length > 0) {
-          addItem({
+          const item = {
             content: files.join(", "),
-            type: "file",
+            type: "file" as const,
             isPinned: false,
             filePaths: files,
-          });
+          };
+          addItem(item);
+          // Save to database asynchronously
+          databaseService
+            .saveItem(item)
+            .catch((err) => console.error("Failed to save files to DB:", err));
         }
       });
 
