@@ -11,6 +11,7 @@ import { GamepadConfig } from "@/components/GamepadConfig";
 import KeybindingEditor from "@/components/KeybindingEditor";
 import GamepadSettingsPanel from "@/components/GamepadSettingsPanel";
 import ProfileManager from "@/components/ProfileManager";
+import GamepadDiagnostics from "@/components/GamepadDiagnostics";
 import { cn } from "@/lib/utils";
 
 const Settings = () => {
@@ -230,6 +231,24 @@ const Settings = () => {
             </AccordionTrigger>
             <AccordionContent className="px-0 py-0 bg-slate-50">
               <ProfileManager />
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Gamepad Diagnostics Section */}
+          <AccordionItem
+            value="diagnostics"
+            className="border-b border-slate-200"
+          >
+            <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-center gap-3">
+                <span>🔍</span>
+                <span className="font-medium text-slate-900">
+                  Gamepad Diagnostics
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-0 py-0 bg-slate-50">
+              <GamepadDiagnostics />
             </AccordionContent>
           </AccordionItem>
         </Accordion>
