@@ -43,6 +43,45 @@ export enum GamepadAxisIndex {
   RightStickY = 3,
 }
 
+/**
+ * Scroll configuration
+ */
+export interface ScrollSettings {
+  enabled: boolean;
+  vertical_speed: number; // Multiplier: 0.5x - 5.0x
+  horizontal_speed: number; // Multiplier: 0.5x - 5.0x
+  reverse_vertical: boolean;
+  reverse_horizontal: boolean;
+}
+
+/**
+ * Click type enumeration
+ */
+export enum ClickType {
+  Left = "left",
+  Right = "right",
+  Middle = "middle",
+  Double = "double",
+}
+
+/**
+ * Keyboard key mapping
+ */
+export interface KeyMapping {
+  single?: string; // Single key like "Return"
+  combination?: string[]; // Like ["Cmd", "Right"] for Cmd+Right
+}
+
+/**
+ * D-Pad button mapping
+ */
+export interface DPadMapping {
+  up: KeyMapping;
+  down: KeyMapping;
+  left: KeyMapping;
+  right: KeyMapping;
+}
+
 export interface GamepadProfile {
   name: string;
   description: string;
@@ -52,6 +91,8 @@ export interface GamepadProfile {
   button_map: Record<string, number>;
   axis_map: Record<string, number>;
   enabled_features: GamepadFeatures;
+  scroll_settings: ScrollSettings;
+  dpad_mapping: DPadMapping;
 }
 
 export interface GamepadFeatures {
@@ -59,6 +100,7 @@ export interface GamepadFeatures {
   keyboard_emulation: boolean;
   vibration: boolean;
   adaptive_triggers: boolean;
+  scroll_control: boolean;
 }
 
 /**

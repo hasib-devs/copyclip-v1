@@ -204,7 +204,7 @@ impl GamepadManager {
                 }
 
                 // Process gamepad input for mouse/keyboard control
-                Self::process_gamepad_input(&gamepads);
+                Self::process_gamepad_input(&gamepads, &mut last_button_state);
                 thread::sleep(Duration::from_millis(16)); // ~60 FPS
             }
         });
@@ -370,7 +370,10 @@ impl GamepadManager {
     }
 
     // Process gamepad input for mouse/keyboard control
-    fn process_gamepad_input(gamepads: &Arc<Mutex<HashMap<usize, Gamepad>>>) {
+    fn process_gamepad_input(
+        gamepads: &Arc<Mutex<HashMap<usize, Gamepad>>>,
+        button_state: &mut HashMap<(usize, GamepadButtonIndex), bool>,
+    ) {
         let g = gamepads.lock().unwrap();
         if g.is_empty() {
             return;
@@ -392,11 +395,85 @@ impl GamepadManager {
 
             if stick_x.abs() > 0.05 || stick_y.abs() > 0.05 {
                 let dx = (stick_x * 10.0) as i32;
-                let dy = -(stick_y * 10.0) as i32;  // Invert Y axis for correct mouse movement
+                let dy = -(stick_y * 10.0) as i32; // Invert Y axis for correct mouse movement
 
                 let mut enigo = Enigo::new();
                 let _ = enigo.mouse_move_relative(dx, dy);
             }
+
+            // Scroll control with right stick
+            let stick_x_right = gamepad
+                .get_axis(GamepadAxisIndex::RightStickX)
+                .unwrap_or(0.0);
+            let stick_y_right = gamepad
+                .get_axis(GamepadAxisIndex::RightStickY)
+                .unwrap_or(0.0);
+
+            if stick_x_right.abs() > 0.05 || stick_y_right.abs() > 0.05 {
+                eprintln!(
+                    "[Scroll] Right stick - X: {:.2}, Y: {:.2}",
+                    stick_x_right, stick_y_right
+                );
+
+                // Calculate scroll amount
+                // Positive Y = down scroll, Negative Y = up scroll
+                let vertical_scroll = (stick_y_right * 10.0) as i32;
+                let horizontal_scroll = (stick_x_right * 10.0) as i32;
+
+                eprintln!(
+                    "[Scroll] Vertical: {}, Horizontal: {}",
+                    vertical_scroll, horizontal_scroll
+                );
+
+                // TODO: Implement scroll via platform-specific API
+                // For now, just log to verify detection
+            }
+
+            // Middle click via LB button
+            let lb_pressed = gamepad
+                .get_button(GamepadButtonIndex::LB)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+
+            let lb_key = (gamepad.index, GamepadButtonIndex::LB);
+            let lb_was_pressed = button_state.get(&lb_key).copied().unwrap_or(false);
+
+            if lb_pressed && !lb_was_pressed {
+                // Rising edge: LB just pressed
+                eprintln!("[Click] Middle Click (LB)");
+                let mut enigo = Enigo::new();
+                let _ = enigo.mouse_down(enigo::MouseButton::Middle);
+                thread::sleep(Duration::from_millis(10));
+                let _ = enigo.mouse_up(enigo::MouseButton::Middle);
+            }
+            button_state.insert(lb_key, lb_pressed);
+
+            // Double click via RB button
+            let rb_pressed = gamepad
+                .get_button(GamepadButtonIndex::RB)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+
+            let rb_key = (gamepad.index, GamepadButtonIndex::RB);
+            let rb_was_pressed = button_state.get(&rb_key).copied().unwrap_or(false);
+
+            if rb_pressed && !rb_was_pressed {
+                // Rising edge: RB just pressed
+                eprintln!("[Click] Double Click (RB)");
+                let mut enigo = Enigo::new();
+
+                // First click
+                let _ = enigo.mouse_down(enigo::MouseButton::Left);
+                thread::sleep(Duration::from_millis(10));
+                let _ = enigo.mouse_up(enigo::MouseButton::Left);
+
+                // Second click
+                thread::sleep(Duration::from_millis(20));
+                let _ = enigo.mouse_down(enigo::MouseButton::Left);
+                thread::sleep(Duration::from_millis(10));
+                let _ = enigo.mouse_up(enigo::MouseButton::Left);
+            }
+            button_state.insert(rb_key, rb_pressed);
 
             // Right trigger = left click
             let rt = gamepad

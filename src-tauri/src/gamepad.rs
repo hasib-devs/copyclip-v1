@@ -147,6 +147,77 @@ pub struct GamepadEvent {
     pub timestamp: f64,
 }
 
+/// Scroll configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScrollSettings {
+    pub enabled: bool,
+    pub vertical_speed: f32,   // Multiplier: 0.5 - 5.0
+    pub horizontal_speed: f32, // Multiplier: 0.5 - 5.0
+    pub reverse_vertical: bool,
+    pub reverse_horizontal: bool,
+}
+
+impl Default for ScrollSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            vertical_speed: 1.5,
+            horizontal_speed: 1.5,
+            reverse_vertical: false,
+            reverse_horizontal: false,
+        }
+    }
+}
+
+/// Click type enumeration
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub enum ClickType {
+    Left,
+    Right,
+    Middle,
+    Double,
+}
+
+/// Keyboard key mapping
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeyMapping {
+    pub single: Option<String>,
+    pub combination: Option<Vec<String>>,
+}
+
+/// D-Pad button mapping
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DPadMapping {
+    pub up: KeyMapping,
+    pub down: KeyMapping,
+    pub left: KeyMapping,
+    pub right: KeyMapping,
+}
+
+impl Default for DPadMapping {
+    fn default() -> Self {
+        Self {
+            up: KeyMapping {
+                single: None,
+                combination: Some(vec!["Page".to_string(), "Up".to_string()]),
+            },
+            down: KeyMapping {
+                single: None,
+                combination: Some(vec!["Page".to_string(), "Down".to_string()]),
+            },
+            left: KeyMapping {
+                single: None,
+                combination: Some(vec!["Cmd".to_string(), "[".to_string()]),
+            },
+            right: KeyMapping {
+                single: None,
+                combination: Some(vec!["Cmd".to_string(), "]".to_string()]),
+            },
+        }
+    }
+}
+
 /// Gamepad profile for custom button/axis mapping
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GamepadProfile {
@@ -158,6 +229,8 @@ pub struct GamepadProfile {
     pub button_map: HashMap<String, GamepadButtonIndex>,
     pub axis_map: HashMap<String, GamepadAxisIndex>,
     pub enabled_features: GamepadFeatures,
+    pub scroll_settings: ScrollSettings,
+    pub dpad_mapping: DPadMapping,
 }
 
 /// Feature flags for gamepad functionality
@@ -167,6 +240,7 @@ pub struct GamepadFeatures {
     pub keyboard_emulation: bool,
     pub vibration: bool,
     pub adaptive_triggers: bool, // PS5 specific
+    pub scroll_control: bool,
 }
 
 impl Default for GamepadFeatures {
@@ -176,6 +250,7 @@ impl Default for GamepadFeatures {
             keyboard_emulation: false,
             vibration: true,
             adaptive_triggers: false,
+            scroll_control: true,
         }
     }
 }
@@ -191,6 +266,8 @@ impl Default for GamepadProfile {
             button_map: HashMap::new(),
             axis_map: HashMap::new(),
             enabled_features: GamepadFeatures::default(),
+            scroll_settings: ScrollSettings::default(),
+            dpad_mapping: DPadMapping::default(),
         }
     }
 }
