@@ -9,7 +9,7 @@ import Snippets from "@/pages/snippets";
 import Statistics from "@/pages/statistics";
 import { BrowserRouter, Route, Routes } from "react-router";
 import "./App.css";
-import { useGamepadContext } from "./assets/contexts/gamepad-context";
+import { useGamepadContext } from "./contexts/gamepad-context";
 import { Toaster } from "./components/ui/sonner";
 import {
   useGamepadMonitor,

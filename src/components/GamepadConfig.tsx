@@ -10,7 +10,7 @@ import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { AlertCircle, Joystick, Zap } from "lucide-react";
-import { useGamepadContext } from "@/assets/contexts/gamepad-context";
+import { useGamepadContext } from "@/contexts/gamepad-context";
 import { useGamepad } from "@/hooks/useGamepad";
 import {
   useGamepadMonitor,

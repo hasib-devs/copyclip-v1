@@ -16,10 +16,11 @@ export function useGamepadMonitor(
 
     const interval = setInterval(async () => {
       try {
+        console.info("[GamepadMonitor] Polling gamepads...");
         const gamepads = await invoke<Gamepad[]>("get_gamepads");
         dispatch({ type: "SET_GAMEPADS", payload: gamepads });
       } catch (err) {
-        console.error("Failed to poll gamepads:", err);
+        console.error("[GamepadMonitor] Failed to poll gamepads:", err);
         // Don't dispatch error on poll failures - keep monitoring
       }
     }, pollInterval);
@@ -37,11 +38,13 @@ export function useLoadGamepadProfiles(
   useEffect(() => {
     const loadProfiles = async () => {
       try {
+        console.info("[GamepadMonitor] Loading gamepad profiles...");
         dispatch({ type: "SET_LOADING", payload: true });
         const profiles = await invoke<any[]>("get_gamepad_profiles");
+        console.log({ profiles });
         dispatch({ type: "SET_PROFILES", payload: profiles });
       } catch (err) {
-        console.error("Failed to load gamepad profiles:", err);
+        console.error("[GamepadMonitor] Failed to load gamepad profiles:", err);
         dispatch({
           type: "SET_ERROR",
           payload: "Failed to load profiles",
