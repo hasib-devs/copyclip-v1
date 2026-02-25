@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_modifier_keys() {
-        assert_eq!(InputModifier::None.keys(), vec![]);
+        assert_eq!(InputModifier::None.keys(), Vec::<&'static str>::new());
         assert_eq!(InputModifier::Alt.keys(), vec!["Alt"]);
         assert_eq!(InputModifier::Ctrl.keys(), vec!["Control"]);
         assert!(InputModifier::AltCtrl.has_alt());

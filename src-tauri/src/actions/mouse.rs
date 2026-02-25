@@ -1,6 +1,5 @@
 /// Mouse control actions: movement, clicking, scrolling
 /// Uses enigo for cross-platform mouse control (enigo 0.1 API)
-
 use log::{debug, error};
 
 /// Perform a left mouse click at current cursor position
