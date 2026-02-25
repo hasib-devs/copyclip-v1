@@ -1,8 +1,11 @@
+use crate::actions::execute_action;
 use crate::db::DatabaseService;
 use crate::gamepad::{
     Gamepad, GamepadAxisIndex, GamepadButton, GamepadButtonIndex, GamepadProfile,
 };
+use crate::modes::{get_mode_bindings, GamepadModeManager};
 use crate::scroll;
+use crate::types::{Action, GamepadMode, InputPattern, InputType};
 use enigo::{Enigo, KeyboardControllable, MouseControllable};
 use gilrs::{Axis, Event, EventType, Gilrs, GilrsBuilder};
 use serde_json;
@@ -19,6 +22,7 @@ pub struct GamepadManager {
     running: Arc<Mutex<bool>>,
     gilrs: Arc<Mutex<Option<Gilrs>>>,
     db: Arc<Mutex<Option<Arc<DatabaseService>>>>,
+    mode_manager: Arc<Mutex<GamepadModeManager>>,
 }
 
 impl GamepadManager {
@@ -40,6 +44,7 @@ impl GamepadManager {
             running: Arc::new(Mutex::new(false)),
             gilrs: Arc::new(Mutex::new(Some(gilrs))),
             db: Arc::new(Mutex::new(None)),
+            mode_manager: Arc::new(Mutex::new(GamepadModeManager::new())),
         })
     }
 
@@ -127,6 +132,7 @@ impl GamepadManager {
         let gamepads = self.gamepads.clone();
         let running = self.running.clone();
         let gilrs_ref = self.gilrs.clone();
+        let mode_manager = self.mode_manager.clone();
 
         thread::spawn(move || {
             let mut gilrs_instance = match gilrs_ref.lock().unwrap().take() {
@@ -205,7 +211,7 @@ impl GamepadManager {
                 }
 
                 // Process gamepad input for mouse/keyboard control
-                Self::process_gamepad_input(&gamepads, &mut last_button_state);
+                Self::process_gamepad_input(&gamepads, &mut last_button_state, &mode_manager);
                 thread::sleep(Duration::from_millis(16)); // ~60 FPS
             }
         });
@@ -393,6 +399,7 @@ impl GamepadManager {
     fn process_gamepad_input(
         gamepads: &Arc<Mutex<HashMap<usize, Gamepad>>>,
         button_state: &mut HashMap<(usize, GamepadButtonIndex), bool>,
+        mode_manager: &Arc<Mutex<GamepadModeManager>>,
     ) {
         let g = gamepads.lock().unwrap();
         if g.is_empty() {
@@ -405,7 +412,11 @@ impl GamepadManager {
                 return;
             }
 
-            // Mouse control with left stick
+            let mut mode_manager_locked = mode_manager.lock().unwrap();
+            let current_mode = mode_manager_locked.current_mode();
+
+            // ============ PHASE 1: CONTINUOUS STICK CONTROL ============
+            // Mouse control with left stick (always available across all modes)
             let stick_x = gamepad
                 .get_axis(GamepadAxisIndex::LeftStickX)
                 .unwrap_or(0.0);
@@ -415,13 +426,13 @@ impl GamepadManager {
 
             if stick_x.abs() > 0.05 || stick_y.abs() > 0.05 {
                 let dx = (stick_x * 10.0) as i32;
-                let dy = -(stick_y * 10.0) as i32; // Invert Y axis for correct mouse movement
+                let dy = -(stick_y * 10.0) as i32;
 
                 let mut enigo = Enigo::new();
                 let _ = enigo.mouse_move_relative(dx, dy);
             }
 
-            // Scroll control with right stick
+            // Scroll control with right stick (Phase 1)
             let stick_x_right = gamepad
                 .get_axis(GamepadAxisIndex::RightStickX)
                 .unwrap_or(0.0);
@@ -430,207 +441,145 @@ impl GamepadManager {
                 .unwrap_or(0.0);
 
             if stick_x_right.abs() > 0.05 || stick_y_right.abs() > 0.05 {
-                eprintln!(
-                    "[Scroll] Right stick - X: {:.2}, Y: {:.2}",
-                    stick_x_right, stick_y_right
-                );
-
-                // Calculate scroll amount
-                // Positive Y = down scroll, Negative Y = up scroll
                 let vertical_scroll = (stick_y_right * 10.0) as i32;
                 let horizontal_scroll = (stick_x_right * 10.0) as i32;
-
-                eprintln!(
-                    "[Scroll] Vertical: {}, Horizontal: {}",
-                    vertical_scroll, horizontal_scroll
-                );
-
-                // Emit scroll event using platform-specific implementation
                 let _ = scroll::scroll(vertical_scroll, horizontal_scroll);
             }
 
-            // Middle click via LB button
-            let lb_pressed = gamepad
-                .get_button(GamepadButtonIndex::LB)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-
-            let lb_key = (gamepad.index, GamepadButtonIndex::LB);
-            let lb_was_pressed = button_state.get(&lb_key).copied().unwrap_or(false);
-
-            if lb_pressed && !lb_was_pressed {
-                // Rising edge: LB just pressed
-                eprintln!("[Click] Middle Click (LB)");
-                let mut enigo = Enigo::new();
-                let _ = enigo.mouse_down(enigo::MouseButton::Middle);
-                thread::sleep(Duration::from_millis(10));
-                let _ = enigo.mouse_up(enigo::MouseButton::Middle);
-            }
-            button_state.insert(lb_key, lb_pressed);
-
-            // Double click via RB button
+            // ============ PHASE 2: MODE SWITCHING ============
+            // Check for mode switch combinations (RB+Y for Motion, LB+Y for Hotkey)
             let rb_pressed = gamepad
                 .get_button(GamepadButtonIndex::RB)
                 .map(|b| b.pressed)
                 .unwrap_or(false);
 
-            let rb_key = (gamepad.index, GamepadButtonIndex::RB);
-            let rb_was_pressed = button_state.get(&rb_key).copied().unwrap_or(false);
-
-            if rb_pressed && !rb_was_pressed {
-                // Rising edge: RB just pressed
-                eprintln!("[Click] Double Click (RB)");
-                let mut enigo = Enigo::new();
-
-                // First click
-                let _ = enigo.mouse_down(enigo::MouseButton::Left);
-                thread::sleep(Duration::from_millis(10));
-                let _ = enigo.mouse_up(enigo::MouseButton::Left);
-
-                // Second click
-                thread::sleep(Duration::from_millis(20));
-                let _ = enigo.mouse_down(enigo::MouseButton::Left);
-                thread::sleep(Duration::from_millis(10));
-                let _ = enigo.mouse_up(enigo::MouseButton::Left);
-            }
-            button_state.insert(rb_key, rb_pressed);
-
-            // Right trigger = left click
-            let rt = gamepad
-                .get_button(GamepadButtonIndex::RT)
+            let lb_pressed = gamepad
+                .get_button(GamepadButtonIndex::LB)
                 .map(|b| b.pressed)
                 .unwrap_or(false);
 
-            if rt {
-                let mut enigo = Enigo::new();
-                let _ = enigo.mouse_down(enigo::MouseButton::Left);
-                thread::sleep(Duration::from_millis(10));
-                let _ = enigo.mouse_up(enigo::MouseButton::Left);
-            }
-
-            // Left trigger = right click
-            let lt = gamepad
-                .get_button(GamepadButtonIndex::LT)
+            let north_pressed = gamepad
+                .get_button(GamepadButtonIndex::North)
                 .map(|b| b.pressed)
                 .unwrap_or(false);
 
-            if lt {
-                let mut enigo = Enigo::new();
-                let _ = enigo.mouse_down(enigo::MouseButton::Right);
-                thread::sleep(Duration::from_millis(10));
-                let _ = enigo.mouse_up(enigo::MouseButton::Right);
+            // RB + Y (North) = Motion mode
+            if rb_pressed && north_pressed {
+                let north_key = (gamepad.index, GamepadButtonIndex::North);
+                let north_was_pressed = button_state.get(&north_key).copied().unwrap_or(false);
+
+                if north_pressed && !north_was_pressed {
+                    eprintln!("[Phase2] Mode switch: RB+Y -> MOTION");
+                    mode_manager_locked.switch_mode(GamepadMode::Motion);
+                }
             }
 
-            // D-Pad keyboard emulation
-            // D-Pad Up = Page Up
-            let dpad_up = gamepad
-                .get_button(GamepadButtonIndex::DPadUp)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let dpad_up_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::DPadUp))
-                .copied()
-                .unwrap_or(false);
-            if dpad_up && !dpad_up_was_pressed {
-                eprintln!("[Keyboard] D-Pad Up -> Page Up");
-                Self::emit_key_press(enigo::Key::PageUp);
-            }
-            button_state.insert((gamepad.index, GamepadButtonIndex::DPadUp), dpad_up);
+            // LB + Y (North) = Hotkey mode
+            if lb_pressed && north_pressed {
+                let north_key = (gamepad.index, GamepadButtonIndex::North);
+                let north_was_pressed = button_state.get(&north_key).copied().unwrap_or(false);
 
-            // D-Pad Down = Page Down
-            let dpad_down = gamepad
-                .get_button(GamepadButtonIndex::DPadDown)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let dpad_down_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::DPadDown))
-                .copied()
-                .unwrap_or(false);
-            if dpad_down && !dpad_down_was_pressed {
-                eprintln!("[Keyboard] D-Pad Down -> Page Down");
-                Self::emit_key_press(enigo::Key::PageDown);
+                if north_pressed && !north_was_pressed {
+                    eprintln!("[Phase2] Mode switch: LB+Y -> HOTKEY");
+                    mode_manager_locked.switch_mode(GamepadMode::Hotkey);
+                }
             }
-            button_state.insert((gamepad.index, GamepadButtonIndex::DPadDown), dpad_down);
 
-            // D-Pad Left = Browser Back (Cmd+[)
-            let dpad_left = gamepad
-                .get_button(GamepadButtonIndex::DPadLeft)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let dpad_left_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::DPadLeft))
-                .copied()
-                .unwrap_or(false);
-            if dpad_left && !dpad_left_was_pressed {
-                eprintln!("[Keyboard] D-Pad Left -> Browser Back (Cmd+[)");
-                // Use arrow left as alternative since bracket might not be reliable
-                Self::emit_key_combination(&[enigo::Key::Meta, enigo::Key::LeftArrow]);
+            // Exit from Motion/Hotkey back to Normal (RB+Y hold)
+            if current_mode != GamepadMode::Normal {
+                if rb_pressed && north_pressed {
+                    let north_key = (gamepad.index, GamepadButtonIndex::North);
+                    let north_was_pressed = button_state.get(&north_key).copied().unwrap_or(false);
+
+                    if !north_pressed && north_was_pressed {
+                        eprintln!("[Phase2] Mode switch: RB+Y release -> NORMAL");
+                        mode_manager_locked.reset_to_normal();
+                    }
+                }
             }
-            button_state.insert((gamepad.index, GamepadButtonIndex::DPadLeft), dpad_left);
 
-            // D-Pad Right = Browser Forward (Cmd+])
-            let dpad_right = gamepad
-                .get_button(GamepadButtonIndex::DPadRight)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let dpad_right_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::DPadRight))
-                .copied()
-                .unwrap_or(false);
-            if dpad_right && !dpad_right_was_pressed {
-                eprintln!("[Keyboard] D-Pad Right -> Browser Forward (Cmd+])");
-                // Use arrow right as alternative since bracket might not be reliable
-                Self::emit_key_combination(&[enigo::Key::Meta, enigo::Key::RightArrow]);
+            // ============ PHASE 2: KEYBINDING EXECUTION ============
+            // Get current mode's keybinding registry
+            let bindings = get_mode_bindings(current_mode);
+
+            // Process all buttons and emit actions based on current mode
+            let all_buttons = vec![
+                GamepadButtonIndex::South,
+                GamepadButtonIndex::East,
+                GamepadButtonIndex::West,
+                GamepadButtonIndex::North,
+                GamepadButtonIndex::LB,
+                GamepadButtonIndex::RB,
+                GamepadButtonIndex::LT,
+                GamepadButtonIndex::RT,
+                GamepadButtonIndex::DPadUp,
+                GamepadButtonIndex::DPadDown,
+                GamepadButtonIndex::DPadLeft,
+                GamepadButtonIndex::DPadRight,
+                GamepadButtonIndex::Select,
+                GamepadButtonIndex::Start,
+                GamepadButtonIndex::LeftStick,
+                GamepadButtonIndex::RightStick,
+            ];
+
+            for button_idx in all_buttons {
+                // Skip mode-switch buttons to avoid double-triggering
+                if current_mode != GamepadMode::Normal
+                    && ((rb_pressed && button_idx == GamepadButtonIndex::North)
+                        || (lb_pressed && button_idx == GamepadButtonIndex::North))
+                {
+                    continue;
+                }
+
+                let button_pressed = gamepad
+                    .get_button(button_idx)
+                    .map(|b| b.pressed)
+                    .unwrap_or(false);
+
+                let button_key = (gamepad.index, button_idx);
+                let button_was_pressed = button_state.get(&button_key).copied().unwrap_or(false);
+
+                // Rising edge: button just pressed
+                if button_pressed && !button_was_pressed {
+                    // Create input pattern for keybinding lookup
+                    let pattern = InputPattern::SingleButton {
+                        button: crate::types::GamepadButton { index: button_idx },
+                        input_type: InputType::Tap,
+                    };
+
+                    // Try to find binding for this button in current mode
+                    if let Some(binding) = bindings.get_binding(&pattern) {
+                        eprintln!(
+                            "[Phase2] Button {:?} -> Action: {}",
+                            button_idx, binding.action
+                        );
+
+                        // Handle mode switches specially
+                        if binding.action.is_mode_switch() {
+                            if let Action::SwitchMode { mode } = binding.action {
+                                mode_manager_locked.switch_mode(mode);
+                            }
+                        } else {
+                            // Execute action via executor with block_on
+                            let action = binding.action.clone();
+                            drop(mode_manager_locked); // Release lock before blocking on async
+
+                            let rt =
+                                tokio::runtime::Runtime::new().expect("Failed to create runtime");
+                            let result = rt.block_on(execute_action(&action));
+
+                            match result {
+                                Ok(_) => eprintln!("[Phase2] Action executed: {}", action),
+                                Err(e) => eprintln!("[Phase2] Action failed: {} - {}", action, e),
+                            }
+
+                            mode_manager_locked = mode_manager.lock().unwrap();
+                        }
+                    }
+                }
+
+                button_state.insert(button_key, button_pressed);
             }
-            button_state.insert((gamepad.index, GamepadButtonIndex::DPadRight), dpad_right);
-
-            // Cross button (South) = Enter
-            let cross = gamepad
-                .get_button(GamepadButtonIndex::South)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let cross_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::South))
-                .copied()
-                .unwrap_or(false);
-            if cross && !cross_was_pressed {
-                eprintln!("[Keyboard] Cross -> Enter");
-                Self::emit_key_press(enigo::Key::Return);
-            }
-            button_state.insert((gamepad.index, GamepadButtonIndex::South), cross);
-
-            // Square button (West) = Escape
-            let square = gamepad
-                .get_button(GamepadButtonIndex::West)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let square_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::West))
-                .copied()
-                .unwrap_or(false);
-            if square && !square_was_pressed {
-                eprintln!("[Keyboard] Square -> Escape");
-                Self::emit_key_press(enigo::Key::Escape);
-            }
-            button_state.insert((gamepad.index, GamepadButtonIndex::West), square);
-
-            // Circle button (East) = Delete
-            let circle = gamepad
-                .get_button(GamepadButtonIndex::East)
-                .map(|b| b.pressed)
-                .unwrap_or(false);
-            let circle_was_pressed = button_state
-                .get(&(gamepad.index, GamepadButtonIndex::East))
-                .copied()
-                .unwrap_or(false);
-            if circle && !circle_was_pressed {
-                eprintln!("[Keyboard] Circle -> Delete");
-                Self::emit_key_press(enigo::Key::Delete);
-            }
-            button_state.insert((gamepad.index, GamepadButtonIndex::East), circle);
-
-            // Triangle button (North) = Not mapped yet
-            // Can add additional mappings here as needed
         }
     }
 
