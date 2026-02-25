@@ -265,6 +265,12 @@ impl GamepadManager {
             .cloned())
     }
 
+    /// Get current gamepad mode
+    pub fn get_current_mode(&self) -> Result<GamepadMode, String> {
+        let mode_manager = self.mode_manager.lock().unwrap_or_else(|e| e.into_inner());
+        Ok(mode_manager.current_mode())
+    }
+
     /// Get currently active profile
     // pub fn get_active_profile(&self) -> Result<GamepadProfile, String> {
     //     let profile_name = self.active_profile.lock().unwrap().clone();

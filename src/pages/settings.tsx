@@ -8,6 +8,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { GamepadConfig } from "@/components/GamepadConfig";
+import KeybindingEditor from "@/components/KeybindingEditor";
+import GamepadSettingsPanel from "@/components/GamepadSettingsPanel";
+import ProfileManager from "@/components/ProfileManager";
 import { cn } from "@/lib/utils";
 
 const Settings = () => {
@@ -176,6 +179,57 @@ const Settings = () => {
             </AccordionTrigger>
             <AccordionContent className="px-4 py-4 bg-slate-50">
               <GamepadConfig />
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Gamepad Keybindings Section */}
+          <AccordionItem
+            value="keybindings"
+            className="border-b border-slate-200"
+          >
+            <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-center gap-3">
+                <span>⌨️</span>
+                <span className="font-medium text-slate-900">
+                  Gamepad Keybindings
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-0 py-0 bg-slate-50">
+              <KeybindingEditor />
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Gamepad Settings Section */}
+          <AccordionItem
+            value="gamepad-settings"
+            className="border-b border-slate-200"
+          >
+            <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-center gap-3">
+                <span>⚙️</span>
+                <span className="font-medium text-slate-900">
+                  Gamepad Settings
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-0 py-0 bg-slate-50">
+              <GamepadSettingsPanel />
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Gamepad Profiles Section */}
+          <AccordionItem value="profiles" className="border-b border-slate-200">
+            <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
+              <div className="flex items-center gap-3">
+                <span>💾</span>
+                <span className="font-medium text-slate-900">
+                  Gamepad Profiles
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-0 py-0 bg-slate-50">
+              <ProfileManager />
             </AccordionContent>
           </AccordionItem>
         </Accordion>

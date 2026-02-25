@@ -3,59 +3,35 @@
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use std::thread;
-    use std::time::Duration;
-
     pub fn scroll(vertical: i32, horizontal: i32) -> Result<(), String> {
-        unsafe {
-            use core_graphics::event::{CGEvent, CGEventType};
-            use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
-            use core_graphics::geometry::CGPoint;
+        use core_graphics::event::CGEvent;
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
-            // Get current cursor location
-            let location =
-                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                    if let Ok(evt) = CGEvent::new(source) {
-                        evt.location()
-                    } else {
-                        // Fallback to screen center
-                        CGPoint::new(500.0, 500.0)
-                    }
-                } else {
-                    return Err("Failed to create event source".to_string());
-                };
-
-            // Send scroll wheel events
-            // macOS scroll: positive = scroll down, negative = scroll up
-            if vertical != 0 {
-                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                    if let Ok(event) = CGEvent::new_scroll_event(
-                        source,
-                        (vertical as i64).try_into().unwrap(),
-                        0,
-                        0,
-                        0,
-                        0,
-                    ) {
-                        event.post(core_graphics::event::CGEventTapLocation::HID);
-                    }
+        // Send scroll wheel events
+        // macOS scroll: positive = scroll down, negative = scroll up
+        if vertical != 0 {
+            if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                if let Ok(event) =
+                    CGEvent::new_scroll_event(source, vertical.abs() as u32, 0, 0, 0, 0)
+                {
+                    event.post(core_graphics::event::CGEventTapLocation::HID);
                 }
-                thread::sleep(Duration::from_millis(5));
             }
-
-            if horizontal != 0 {
-                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                    if let Ok(event) =
-                        CGEvent::new_scroll_event(source, 0, horizontal as u32, 0, 0, 0)
-                    {
-                        event.post(core_graphics::event::CGEventTapLocation::HID);
-                    }
-                }
-                thread::sleep(Duration::from_millis(5));
-            }
-
-            Ok(())
+            std::thread::sleep(std::time::Duration::from_millis(5));
         }
+
+        if horizontal != 0 {
+            if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                if let Ok(event) =
+                    CGEvent::new_scroll_event(source, 0, horizontal.abs() as u32, 0, 0, 0)
+                {
+                    event.post(core_graphics::event::CGEventTapLocation::HID);
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+
+        Ok(())
     }
 }
 

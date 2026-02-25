@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { BarChart3, Clipboard, Code2, Settings, Smile } from "lucide-react";
 import { Link, useLocation } from "react-router";
+import ModeIndicator from "./ModeIndicator";
 
 const Navigation = () => {
   const location = useLocation();
@@ -16,33 +17,40 @@ const Navigation = () => {
   return (
     <nav
       className={cn(
-        "flex items-center justify-evenly gap-0",
+        "flex items-center justify-between gap-4 px-4",
         "bg-white border-b border-slate-200",
         "overflow-x-auto",
       )}
     >
-      {navItems.map(({ to, icon: Icon, label }) => {
-        const isActive = location.pathname === to;
+      <div className="flex items-center gap-0 flex-1">
+        {navItems.map(({ to, icon: Icon, label }) => {
+          const isActive = location.pathname === to;
 
-        return (
-          <Link
-            key={to}
-            to={to}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1",
-              "min-w-fit px-1 pt-3 pb-1",
-              "text-xs font-medium transition-colors",
-              "border-b-2",
-              isActive
-                ? "border-blue-600 text-slate-900"
-                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50",
-            )}
-          >
-            <Icon size={20} />
-            <span>{label}</span>
-          </Link>
-        );
-      })}
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1",
+                "min-w-fit px-1 pt-3 pb-1",
+                "text-xs font-medium transition-colors",
+                "border-b-2",
+                isActive
+                  ? "border-blue-600 text-slate-900"
+                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50",
+              )}
+            >
+              <Icon size={20} />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Mode Indicator on the right */}
+      <div className="shrink-0">
+        <ModeIndicator />
+      </div>
     </nav>
   );
 };

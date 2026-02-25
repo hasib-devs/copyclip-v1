@@ -114,6 +114,11 @@ pub fn run() {
             commands::save_gamepad_profile,
             commands::delete_gamepad_profile,
             commands::set_active_gamepad_profile,
+            commands::get_gamepad_mode,
+            commands::get_gamepad_keybindings,
+            commands::save_gamepad_keybindings,
+            commands::get_gamepad_settings,
+            commands::save_gamepad_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

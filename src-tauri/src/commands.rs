@@ -297,3 +297,78 @@ pub fn set_active_gamepad_profile(
     gamepad.set_active_profile(profile_name)?;
     Ok("Profile activated".to_string())
 }
+
+/**
+ * Get current gamepad mode (Normal/Motion/Hotkey)
+ */
+#[tauri::command]
+pub fn get_gamepad_mode(gamepad: State<'_, GamepadManager>) -> Result<String, String> {
+    let mode_str = gamepad
+        .get_current_mode()
+        .map(|mode| format!("{:?}", mode))
+        .unwrap_or_else(|_| "Unknown".to_string());
+    Ok(mode_str)
+}
+
+/**
+ * Get all gamepad keybindings
+ */
+#[tauri::command]
+pub fn get_gamepad_keybindings() -> Result<Vec<(String, String)>, String> {
+    // TODO: Load from database or file
+    // For now, return default keybindings
+    let defaults = vec![
+        ("South".to_string(), "LeftClick".to_string()),
+        ("East".to_string(), "RightClick".to_string()),
+        ("North".to_string(), "Key_Return".to_string()),
+        ("West".to_string(), "Key_Escape".to_string()),
+        ("LB".to_string(), "MiddleClick".to_string()),
+        ("RB".to_string(), "Key_Space".to_string()),
+        ("Select".to_string(), "SwitchModeNormal".to_string()),
+        ("Start".to_string(), "SwitchModeHotkey".to_string()),
+    ];
+    Ok(defaults)
+}
+
+/**
+ * Save gamepad keybindings
+ */
+#[tauri::command]
+pub fn save_gamepad_keybindings(keybindings: Vec<(String, String)>) -> Result<String, String> {
+    // TODO: Save to database or file
+    eprintln!("[KEYBINDINGS] Saving {} keybindings", keybindings.len());
+    for (button, action) in &keybindings {
+        eprintln!("[KEYBINDINGS]   {} → {}", button, action);
+    }
+    Ok("Keybindings saved".to_string())
+}
+
+/**
+ * Get gamepad settings (sensitivity, dead zone, etc.)
+ */
+#[tauri::command]
+pub fn get_gamepad_settings() -> Result<serde_json::Value, String> {
+    // TODO: Load from database or file
+    // For now, return default settings
+    let defaults = serde_json::json!({
+        "sensitivity": 1.5,
+        "deadZone": 0.1,
+        "acceleration": 1.0,
+        "scrollVerticalSpeed": 1.0,
+        "scrollHorizontalSpeed": 1.0,
+        "reverseScrollVertical": false,
+        "reverseScrollHorizontal": false,
+        "vibrationEnabled": true,
+    });
+    Ok(defaults)
+}
+
+/**
+ * Save gamepad settings
+ */
+#[tauri::command]
+pub fn save_gamepad_settings(settings: serde_json::Value) -> Result<String, String> {
+    // TODO: Save to database or file
+    eprintln!("[SETTINGS] Saving gamepad settings: {}", settings);
+    Ok("Settings saved".to_string())
+}
