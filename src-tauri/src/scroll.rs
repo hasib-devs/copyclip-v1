@@ -3,16 +3,59 @@
 
 #[cfg(target_os = "macos")]
 mod macos {
+    use std::thread;
+    use std::time::Duration;
+
     pub fn scroll(vertical: i32, horizontal: i32) -> Result<(), String> {
-        // macOS scroll implementation
-        // Note: Core-graphics CGEvent::new_scroll_event requires specific ScrollEventUnit enum values
-        // that are not clearly documented in the core-graphics crate.
-        // For now, logging the scroll intent. Full implementation pending proper API investigation.
-        eprintln!(
-            "[macOS Scroll] Vertical: {}, Horizontal: {} (pending CGEvent implementation)",
-            vertical, horizontal
-        );
-        Ok(())
+        unsafe {
+            use core_graphics::event::{CGEvent, CGEventType};
+            use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+            use core_graphics::geometry::CGPoint;
+
+            // Get current cursor location
+            let location =
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                    if let Ok(evt) = CGEvent::new(source) {
+                        evt.location()
+                    } else {
+                        // Fallback to screen center
+                        CGPoint::new(500.0, 500.0)
+                    }
+                } else {
+                    return Err("Failed to create event source".to_string());
+                };
+
+            // Send scroll wheel events
+            // macOS scroll: positive = scroll down, negative = scroll up
+            if vertical != 0 {
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                    if let Ok(event) = CGEvent::new_scroll_event(
+                        source,
+                        (vertical as i64).try_into().unwrap(),
+                        0,
+                        0,
+                        0,
+                        0,
+                    ) {
+                        event.post(core_graphics::event::CGEventTapLocation::HID);
+                    }
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+
+            if horizontal != 0 {
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                    if let Ok(event) =
+                        CGEvent::new_scroll_event(source, 0, horizontal as u32, 0, 0, 0)
+                    {
+                        event.post(core_graphics::event::CGEventTapLocation::HID);
+                    }
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+
+            Ok(())
+        }
     }
 }
 
@@ -42,21 +85,32 @@ mod windows {
 
 #[cfg(target_os = "linux")]
 mod linux {
-    /// Linux scroll implementation note:
-    /// X11 and Wayland handle scrolling differently.
-    /// This is a fallback that logs the scroll intent.
-    /// For production use, consider using xdotool or similar tools.
+    use std::process::Command;
 
     pub fn scroll(vertical: i32, horizontal: i32) -> Result<(), String> {
-        eprintln!(
-            "[Linux Scroll] Vertical: {}, Horizontal: {} (requires X11/Wayland integration)",
-            vertical, horizontal
-        );
+        // Vertical scrolling: positive = scroll down, negative = scroll up
+        if vertical != 0 {
+            let button = if vertical > 0 { "5" } else { "4" };
+            let count = vertical.abs() as u32;
+            for _ in 0..count {
+                Command::new("xdotool")
+                    .args(&["click", button])
+                    .output()
+                    .map_err(|e| format!("Failed to execute xdotool: {}", e))?;
+            }
+        }
 
-        // In a production environment, this would:
-        // 1. Detect if running under X11 or Wayland
-        // 2. Use appropriate API (X11 button events 4-7, or Wayland protocols)
-        // For now, return success since detection is working
+        // Horizontal scrolling: positive = scroll right, negative = scroll left
+        if horizontal != 0 {
+            let button = if horizontal > 0 { "7" } else { "6" };
+            let count = horizontal.abs() as u32;
+            for _ in 0..count {
+                Command::new("xdotool")
+                    .args(&["click", button])
+                    .output()
+                    .map_err(|e| format!("Failed to execute xdotool: {}", e))?;
+            }
+        }
 
         Ok(())
     }
@@ -64,13 +118,6 @@ mod linux {
 
 /// Platform-independent scroll interface
 pub fn scroll(vertical: i32, horizontal: i32) -> Result<(), String> {
-    eprintln!(
-        "[Scroll::emit] Vertical: {}, Horizontal: {} (Platform: {})",
-        vertical,
-        horizontal,
-        std::env::consts::OS
-    );
-
     #[cfg(target_os = "macos")]
     return macos::scroll(vertical, horizontal);
 
@@ -82,7 +129,6 @@ pub fn scroll(vertical: i32, horizontal: i32) -> Result<(), String> {
 
     #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
-        eprintln!("[Scroll] Unsupported platform: {}", std::env::consts::OS);
         Err("Scroll not supported on this platform".to_string())
     }
 }

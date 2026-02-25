@@ -10,6 +10,7 @@ use enigo::{Enigo, KeyboardControllable, MouseControllable};
 use gilrs::{Axis, Event, EventType, Gilrs, GilrsBuilder};
 use serde_json;
 use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -51,7 +52,7 @@ impl GamepadManager {
     /// Set the database service for profile persistence
     pub fn set_database(&self, db: Arc<DatabaseService>) {
         eprintln!("[GamepadManager::set_database] Setting up database for profile persistence...");
-        *self.db.lock().unwrap() = Some(db);
+        *self.db.lock().unwrap_or_else(|e| e.into_inner()) = Some(db);
         // Load profiles from database on initialization
         eprintln!("[GamepadManager::set_database] Calling load_profiles_from_db...");
         self.load_profiles_from_db();
@@ -60,7 +61,7 @@ impl GamepadManager {
     /// Load profiles from database into memory cache
     fn load_profiles_from_db(&self) {
         eprintln!("[GamepadManager::load_profiles_from_db] Starting profile load...");
-        if let Some(ref db) = *self.db.lock().unwrap() {
+        if let Some(ref db) = *self.db.lock().unwrap_or_else(|e| e.into_inner()) {
             eprintln!("[GamepadManager::load_profiles_from_db] Database is available, querying profiles...");
             match db.get_gamepad_profiles() {
                 Ok(profiles) => {
@@ -78,7 +79,7 @@ impl GamepadManager {
                             );
                         }
                     }
-                    let mut profiles_map = self.profiles.lock().unwrap();
+                    let mut profiles_map = self.profiles.lock().unwrap_or_else(|e| e.into_inner());
 
                     // Keep the default profile that was created on init
                     let default_profile = profiles_map.get("Default").cloned();
@@ -120,14 +121,14 @@ impl GamepadManager {
     /// Start listening to gamepad input
     pub fn start(&self) -> Result<(), String> {
         eprintln!("[GamepadManager::start] Starting gamepad listener...");
-        let is_running = *self.running.lock().unwrap();
+        let is_running = *self.running.lock().unwrap_or_else(|e| e.into_inner());
         if is_running {
             eprintln!("[GamepadManager::start] Gamepad listener already running");
             return Err("Gamepad listener already running".to_string());
         }
 
         eprintln!("[GamepadManager::start] Spawning gamepad polling thread...");
-        *self.running.lock().unwrap() = true;
+        *self.running.lock().unwrap_or_else(|e| e.into_inner()) = true;
 
         let gamepads = self.gamepads.clone();
         let running = self.running.clone();
@@ -135,19 +136,20 @@ impl GamepadManager {
         let mode_manager = self.mode_manager.clone();
 
         thread::spawn(move || {
-            let mut gilrs_instance = match gilrs_ref.lock().unwrap().take() {
-                Some(g) => g,
-                None => return,
-            };
+            let mut gilrs_instance =
+                match gilrs_ref.lock().unwrap_or_else(|e| e.into_inner()).take() {
+                    Some(g) => g,
+                    None => return,
+                };
 
             log::info!("Gamepad listener started");
 
             let mut last_button_state: HashMap<(usize, GamepadButtonIndex), bool> = HashMap::new();
 
             loop {
-                if !*running.lock().unwrap() {
+                if !*running.lock().unwrap_or_else(|e| e.into_inner()) {
                     log::info!("Gamepad listener stopped");
-                    *gilrs_ref.lock().unwrap() = Some(gilrs_instance);
+                    *gilrs_ref.lock().unwrap_or_else(|e| e.into_inner()) = Some(gilrs_instance);
                     break;
                 }
 
@@ -157,15 +159,23 @@ impl GamepadManager {
                         EventType::Connected => {
                             let name = gilrs_instance.gamepad(id).name().to_string();
                             let gamepad = Gamepad::new(name.clone(), id.into());
-                            gamepads.lock().unwrap().insert(id.into(), gamepad);
+                            let mut gamepads_lock =
+                                gamepads.lock().unwrap_or_else(|e| e.into_inner());
+                            gamepads_lock.insert(id.into(), gamepad);
                             log::info!("Gamepad connected: {:?} - {}", id, name);
                         }
                         EventType::Disconnected => {
-                            gamepads.lock().unwrap().remove(&(id.into()));
+                            let mut gamepads_lock =
+                                gamepads.lock().unwrap_or_else(|e| e.into_inner());
+                            gamepads_lock.remove(&(id.into()));
                             log::info!("Gamepad disconnected: {:?}", id);
                         }
                         EventType::AxisChanged(axis, value, _) => {
-                            if let Some(gamepad) = gamepads.lock().unwrap().get_mut(&(id.into())) {
+                            if let Some(gamepad) = gamepads
+                                .lock()
+                                .unwrap_or_else(|e| e.into_inner())
+                                .get_mut(&(id.into()))
+                            {
                                 // Map gilrs axis to standard gamepad axis
                                 if let Some(gamepad_axis) = Self::map_axis_to_gamepad(axis) {
                                     gamepad.set_axis(gamepad_axis, value);
@@ -174,7 +184,11 @@ impl GamepadManager {
                             }
                         }
                         EventType::ButtonPressed(button, _) => {
-                            if let Some(gamepad) = gamepads.lock().unwrap().get_mut(&(id.into())) {
+                            if let Some(gamepad) = gamepads
+                                .lock()
+                                .unwrap_or_else(|e| e.into_inner())
+                                .get_mut(&(id.into()))
+                            {
                                 if let Some(gamepad_button) = Self::map_button_to_gamepad(button) {
                                     let btn = GamepadButton {
                                         pressed: true,
@@ -191,7 +205,11 @@ impl GamepadManager {
                             }
                         }
                         EventType::ButtonReleased(button, _) => {
-                            if let Some(gamepad) = gamepads.lock().unwrap().get_mut(&(id.into())) {
+                            if let Some(gamepad) = gamepads
+                                .lock()
+                                .unwrap_or_else(|e| e.into_inner())
+                                .get_mut(&(id.into()))
+                            {
                                 if let Some(gamepad_button) = Self::map_button_to_gamepad(button) {
                                     let btn = GamepadButton {
                                         pressed: false,
@@ -225,12 +243,13 @@ impl GamepadManager {
     /// Stop listening to gamepad input
     pub fn stop(&self) {
         eprintln!("[GamepadManager::stop] Stopping gamepad listener...");
-        *self.running.lock().unwrap() = false;
+        let mut running = self.running.lock().unwrap_or_else(|e| e.into_inner());
+        *running = false;
     }
 
     /// Get all connected gamepads
     pub fn get_gamepads(&self) -> Result<Vec<Gamepad>, String> {
-        let gamepads = self.gamepads.lock().unwrap();
+        let gamepads = self.gamepads.lock().unwrap_or_else(|e| e.into_inner());
         let mut list: Vec<_> = gamepads.values().cloned().collect();
         list.sort_by_key(|g| g.index);
         Ok(list)
@@ -238,7 +257,12 @@ impl GamepadManager {
 
     /// Get specific gamepad by index
     pub fn get_gamepad(&self, index: usize) -> Result<Option<Gamepad>, String> {
-        Ok(self.gamepads.lock().unwrap().get(&index).cloned())
+        Ok(self
+            .gamepads
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&index)
+            .cloned())
     }
 
     /// Get currently active profile
@@ -255,10 +279,18 @@ impl GamepadManager {
 
     /// Set active profile
     pub fn set_active_profile(&self, profile_name: String) -> Result<(), String> {
-        if !self.profiles.lock().unwrap().contains_key(&profile_name) {
+        if !self
+            .profiles
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains_key(&profile_name)
+        {
             return Err(format!("Profile '{}' not found", profile_name));
         }
-        *self.active_profile.lock().unwrap() = profile_name;
+        *self
+            .active_profile
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = profile_name;
         Ok(())
     }
 
@@ -271,7 +303,7 @@ impl GamepadManager {
             .insert(profile.name.clone(), profile.clone());
 
         // Also save to database if available
-        if let Some(ref db) = *self.db.lock().unwrap() {
+        if let Some(ref db) = *self.db.lock().unwrap_or_else(|e| e.into_inner()) {
             // Serialize complex fields to JSON
             let button_map_json =
                 serde_json::to_string(&profile.button_map).unwrap_or_else(|_| "{}".to_string());
@@ -307,10 +339,13 @@ impl GamepadManager {
         }
 
         // Delete from memory
-        self.profiles.lock().unwrap().remove(profile_name);
+        self.profiles
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(profile_name);
 
         // Also delete from database if available
-        if let Some(ref db) = *self.db.lock().unwrap() {
+        if let Some(ref db) = *self.db.lock().unwrap_or_else(|e| e.into_inner()) {
             let _ = db.delete_gamepad_profile(profile_name).map_err(|e| {
                 eprintln!(
                     "[GamepadManager] Failed to delete profile from database: {}",
@@ -326,7 +361,7 @@ impl GamepadManager {
     /// Get all profiles
     pub fn get_profiles(&self) -> Result<Vec<GamepadProfile>, String> {
         eprintln!("[GamepadManager::get_profiles] Called");
-        let profiles_locked = self.profiles.lock().unwrap();
+        let profiles_locked = self.profiles.lock().unwrap_or_else(|e| e.into_inner());
         let current_count = profiles_locked.len();
         eprintln!(
             "[GamepadManager::get_profiles] Current profiles in memory: {}",
@@ -338,13 +373,13 @@ impl GamepadManager {
                 "[GamepadManager::get_profiles] Cache is empty, checking if DB is available..."
             );
             drop(profiles_locked); // Release lock before trying to reload
-            if self.db.lock().unwrap().is_some() {
+            if self.db.lock().unwrap_or_else(|e| e.into_inner()).is_some() {
                 eprintln!("[GamepadManager::get_profiles] Loading from database...");
                 self.load_profiles_from_db();
             }
         }
 
-        let profiles = self.profiles.lock().unwrap();
+        let profiles = self.profiles.lock().unwrap_or_else(|e| e.into_inner());
         eprintln!(
             "[GamepadManager::get_profiles] Returning {} profiles",
             profiles.len()
@@ -401,7 +436,7 @@ impl GamepadManager {
         button_state: &mut HashMap<(usize, GamepadButtonIndex), bool>,
         mode_manager: &Arc<Mutex<GamepadModeManager>>,
     ) {
-        let g = gamepads.lock().unwrap();
+        let g = gamepads.lock().unwrap_or_else(|e| e.into_inner());
         if g.is_empty() {
             return;
         }
@@ -412,7 +447,7 @@ impl GamepadManager {
                 return;
             }
 
-            let mut mode_manager_locked = mode_manager.lock().unwrap();
+            let mut mode_manager_locked = mode_manager.lock().unwrap_or_else(|e| e.into_inner());
             let current_mode = mode_manager_locked.current_mode();
 
             // ============ PHASE 1: CONTINUOUS STICK CONTROL ============
@@ -564,16 +599,25 @@ impl GamepadManager {
                             let action = binding.action.clone();
                             drop(mode_manager_locked); // Release lock before blocking on async
 
-                            let rt =
-                                tokio::runtime::Runtime::new().expect("Failed to create runtime");
-                            let result = rt.block_on(execute_action(&action));
+                            // Wrap in catch_unwind to prevent panics from poisoning locks
+                            let result = catch_unwind(AssertUnwindSafe(|| {
+                                let rt = tokio::runtime::Runtime::new()
+                                    .expect("Failed to create runtime");
+                                rt.block_on(execute_action(&action))
+                            }));
 
                             match result {
-                                Ok(_) => eprintln!("[Phase2] Action executed: {}", action),
-                                Err(e) => eprintln!("[Phase2] Action failed: {} - {}", action, e),
+                                Ok(Ok(_)) => eprintln!("[Phase2] Action executed: {}", action),
+                                Ok(Err(e)) => {
+                                    eprintln!("[Phase2] Action failed: {} - {}", action, e)
+                                }
+                                Err(_) => {
+                                    eprintln!("[Phase2] Action panicked, recovering gracefully")
+                                }
                             }
 
-                            mode_manager_locked = mode_manager.lock().unwrap();
+                            mode_manager_locked =
+                                mode_manager.lock().unwrap_or_else(|e| e.into_inner());
                         }
                     }
                 }

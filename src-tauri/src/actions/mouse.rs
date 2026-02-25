@@ -12,8 +12,20 @@ mod macos {
             use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
             use core_graphics::geometry::CGPoint;
 
-            let location = CGPoint::new(0.0, 0.0);
+            // Try with current cursor position
+            let location =
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                    if let Ok(evt) = CGEvent::new(source) {
+                        evt.location()
+                    } else {
+                        // Fallback to center of screen if we can't get cursor position
+                        CGPoint::new(500.0, 500.0)
+                    }
+                } else {
+                    return Err("Failed to create event source".to_string());
+                };
 
+            // Post left mouse down
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 if let Ok(event) = CGEvent::new_mouse_event(
                     source,
@@ -27,6 +39,7 @@ mod macos {
 
             thread::sleep(Duration::from_millis(10));
 
+            // Post left mouse up
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 if let Ok(event) = CGEvent::new_mouse_event(
                     source,
@@ -48,8 +61,20 @@ mod macos {
             use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
             use core_graphics::geometry::CGPoint;
 
-            let location = CGPoint::new(0.0, 0.0);
+            // Try with current cursor position
+            let location =
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                    if let Ok(evt) = CGEvent::new(source) {
+                        evt.location()
+                    } else {
+                        // Fallback to center of screen if we can't get cursor position
+                        CGPoint::new(500.0, 500.0)
+                    }
+                } else {
+                    return Err("Failed to create event source".to_string());
+                };
 
+            // Post right mouse down
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 if let Ok(event) = CGEvent::new_mouse_event(
                     source,
@@ -63,6 +88,7 @@ mod macos {
 
             thread::sleep(Duration::from_millis(10));
 
+            // Post right mouse up
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 if let Ok(event) = CGEvent::new_mouse_event(
                     source,
@@ -84,8 +110,20 @@ mod macos {
             use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
             use core_graphics::geometry::CGPoint;
 
-            let location = CGPoint::new(0.0, 0.0);
+            // Try with current cursor position
+            let location =
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
+                    if let Ok(evt) = CGEvent::new(source) {
+                        evt.location()
+                    } else {
+                        // Fallback to center of screen if we can't get cursor position
+                        CGPoint::new(500.0, 500.0)
+                    }
+                } else {
+                    return Err("Failed to create event source".to_string());
+                };
 
+            // Post middle mouse down
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 if let Ok(event) = CGEvent::new_mouse_event(
                     source,
@@ -99,6 +137,7 @@ mod macos {
 
             thread::sleep(Duration::from_millis(10));
 
+            // Post middle mouse up
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 if let Ok(event) = CGEvent::new_mouse_event(
                     source,
