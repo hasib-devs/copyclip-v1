@@ -40,30 +40,41 @@ pub fn run() {
             let db_path = app_data_dir.join("copyclip.db");
 
             // Initialize database synchronously (rusqlite is sync)
+            eprintln!("[AppSetup] Creating database at: {:?}", db_path);
             let db = match DatabaseService::new(db_path) {
                 Ok(db) => {
                     log::info!("Database initialized successfully");
+                    eprintln!("[AppSetup] Database created and initialized");
                     Arc::new(db)
                 }
                 Err(e) => {
                     log::error!("Failed to initialize database: {}", e);
+                    eprintln!("[AppSetup] Failed to initialize database: {}", e);
                     return Err(format!("Failed to initialize database: {}", e).into());
                 }
             };
 
             // Store database service in app state
+            eprintln!("[AppSetup] Managing Arc<DatabaseService> in Tauri state");
             app_handle.manage(db.clone());
 
             // Initialize gamepad manager
+            eprintln!("[AppSetup] Initializing GamepadManager...");
             match GamepadManager::new() {
                 Ok(gamepad_manager) => {
                     // Set database for profile persistence
+                    eprintln!(
+                        "[AppSetup] Setting database on GamepadManager (will load profiles)..."
+                    );
                     gamepad_manager.set_database(db);
+                    eprintln!("[AppSetup] Managing GamepadManager in Tauri state");
                     app_handle.manage(gamepad_manager);
                     log::info!("Gamepad manager initialized successfully");
+                    eprintln!("[AppSetup] Gamepad manager fully initialized");
                 }
                 Err(e) => {
                     log::error!("Failed to initialize gamepad manager: {}", e);
+                    eprintln!("[AppSetup] Failed to initialize gamepad manager: {}", e);
                 }
             }
 

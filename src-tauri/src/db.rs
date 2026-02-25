@@ -366,9 +366,7 @@ impl DatabaseService {
         let conn = self.conn.lock().unwrap();
         let now = Utc::now().timestamp_millis();
 
-        let mut stmt = conn.prepare(
-            "SELECT COUNT(*) FROM gamepad_profiles WHERE name = ?"
-        )?;
+        let mut stmt = conn.prepare("SELECT COUNT(*) FROM gamepad_profiles WHERE name = ?")?;
 
         let exists: bool = stmt.exists(rusqlite::params![name])?;
         drop(stmt);
@@ -389,19 +387,21 @@ impl DatabaseService {
     /**
      * Get all gamepad profiles as JSON
      */
-    pub fn get_gamepad_profiles(
-        &self,
-    ) -> SqliteResult<Vec<serde_json::Value>> {
-        eprintln!("[DB::GET_PROFILES] Fetching all profiles");
+    pub fn get_gamepad_profiles(&self) -> SqliteResult<Vec<serde_json::Value>> {
+        eprintln!("[DB::GET_PROFILES] Starting profile fetch from database...");
         let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
             "SELECT name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features FROM gamepad_profiles ORDER BY created_at DESC"
         )?;
 
+        eprintln!("[DB::GET_PROFILES] Query prepared, executing...");
+
         let profiles = stmt.query_map([], |row| {
+            let name = row.get::<_, String>(0)?;
+            eprintln!("[DB::GET_PROFILES] Processing profile row: {}", name);
             Ok(serde_json::json!({
-                "name": row.get::<_, String>(0)?,
+                "name": name,
                 "description": row.get::<_, String>(1)?,
                 "sensitivity": row.get::<_, f64>(2)? as f32,
                 "dead_zone": row.get::<_, f64>(3)? as f32,
@@ -415,10 +415,17 @@ impl DatabaseService {
         let mut result = Vec::new();
         for profile in profiles {
             if let Ok(p) = profile {
+                eprintln!("[DB::GET_PROFILES] Successfully converted profile to JSON");
                 result.push(p);
+            } else {
+                eprintln!("[DB::GET_PROFILES] Failed to convert profile row");
             }
         }
 
+        eprintln!(
+            "[DB::GET_PROFILES] Total profiles fetched from database: {}",
+            result.len()
+        );
         Ok(result)
     }
 

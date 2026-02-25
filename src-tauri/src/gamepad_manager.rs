@@ -40,46 +40,74 @@ impl GamepadManager {
 
     /// Set the database service for profile persistence
     pub fn set_database(&self, db: Arc<DatabaseService>) {
+        eprintln!("[GamepadManager::set_database] Setting up database for profile persistence...");
         *self.db.lock().unwrap() = Some(db);
         // Load profiles from database on initialization
+        eprintln!("[GamepadManager::set_database] Calling load_profiles_from_db...");
         self.load_profiles_from_db();
     }
 
     /// Load profiles from database into memory cache
     fn load_profiles_from_db(&self) {
+        eprintln!("[GamepadManager::load_profiles_from_db] Starting profile load...");
         if let Some(ref db) = *self.db.lock().unwrap() {
+            eprintln!("[GamepadManager::load_profiles_from_db] Database is available, querying profiles...");
             match db.get_gamepad_profiles() {
                 Ok(profiles) => {
+                    eprintln!(
+                        "[GamepadManager::load_profiles_from_db] Database returned {} profiles",
+                        profiles.len()
+                    );
+                    if profiles.is_empty() {
+                        eprintln!("[GamepadManager::load_profiles_from_db] No profiles in database (fresh install or no saved profiles)");
+                    } else {
+                        for profile_json in &profiles {
+                            eprintln!(
+                                "[GamepadManager::load_profiles_from_db] Profile JSON: {:?}",
+                                profile_json
+                            );
+                        }
+                    }
                     let mut profiles_map = self.profiles.lock().unwrap();
                     profiles_map.clear();
                     for profile_json in profiles {
-                        if let Ok(profile) = serde_json::from_value::<GamepadProfile>(profile_json)
-                        {
-                            profiles_map.insert(profile.name.clone(), profile);
+                        match serde_json::from_value::<GamepadProfile>(profile_json.clone()) {
+                            Ok(profile) => {
+                                eprintln!("[GamepadManager::load_profiles_from_db] Successfully deserialized profile: {}", profile.name);
+                                profiles_map.insert(profile.name.clone(), profile);
+                            }
+                            Err(e) => {
+                                eprintln!("[GamepadManager::load_profiles_from_db] Failed to deserialize profile: {}", e);
+                            }
                         }
                     }
                     eprintln!(
-                        "[GamepadManager] Loaded {} profiles from database",
+                        "[GamepadManager::load_profiles_from_db] Total profiles loaded into memory: {}",
                         profiles_map.len()
                     );
                 }
                 Err(e) => {
                     eprintln!(
-                        "[GamepadManager] Failed to load profiles from database: {}",
+                        "[GamepadManager::load_profiles_from_db] Failed to load profiles from database: {}",
                         e
                     );
                 }
             }
+        } else {
+            eprintln!("[GamepadManager::load_profiles_from_db] Database not available yet!");
         }
     }
 
     /// Start listening to gamepad input
     pub fn start(&self) -> Result<(), String> {
+        eprintln!("[GamepadManager::start] Starting gamepad listener...");
         let is_running = *self.running.lock().unwrap();
         if is_running {
+            eprintln!("[GamepadManager::start] Gamepad listener already running");
             return Err("Gamepad listener already running".to_string());
         }
 
+        eprintln!("[GamepadManager::start] Spawning gamepad polling thread...");
         *self.running.lock().unwrap() = true;
 
         let gamepads = self.gamepads.clone();
@@ -174,6 +202,7 @@ impl GamepadManager {
 
     /// Stop listening to gamepad input
     pub fn stop(&self) {
+        eprintln!("[GamepadManager::stop] Stopping gamepad listener...");
         *self.running.lock().unwrap() = false;
     }
 
@@ -274,14 +303,30 @@ impl GamepadManager {
 
     /// Get all profiles
     pub fn get_profiles(&self) -> Result<Vec<GamepadProfile>, String> {
-        // If database is available and cache is empty, try loading from DB
-        if self.profiles.lock().unwrap().is_empty() {
+        eprintln!("[GamepadManager::get_profiles] Called");
+        let profiles_locked = self.profiles.lock().unwrap();
+        let current_count = profiles_locked.len();
+        eprintln!(
+            "[GamepadManager::get_profiles] Current profiles in memory: {}",
+            current_count
+        );
+
+        if current_count == 0 {
+            eprintln!(
+                "[GamepadManager::get_profiles] Cache is empty, checking if DB is available..."
+            );
+            drop(profiles_locked); // Release lock before trying to reload
             if self.db.lock().unwrap().is_some() {
+                eprintln!("[GamepadManager::get_profiles] Loading from database...");
                 self.load_profiles_from_db();
             }
         }
 
         let profiles = self.profiles.lock().unwrap();
+        eprintln!(
+            "[GamepadManager::get_profiles] Returning {} profiles",
+            profiles.len()
+        );
         Ok(profiles.values().cloned().collect())
     }
 

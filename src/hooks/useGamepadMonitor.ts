@@ -38,12 +38,40 @@ export function useLoadGamepadProfiles(
   useEffect(() => {
     const loadProfiles = async () => {
       try {
-        console.info("[GamepadMonitor] Loading gamepad profiles...");
+        console.info(
+          "[useLoadGamepadProfiles] Starting profile load from Tauri command...",
+        );
         dispatch({ type: "SET_LOADING", payload: true });
+        console.info(
+          "[useLoadGamepadProfiles] Invoking 'get_gamepad_profiles' command...",
+        );
         const profiles = await invoke<GamepadProfile[]>("get_gamepad_profiles");
+
+        console.log("[useLoadGamepadProfiles] Response from Tauri:", {
+          profiles,
+        });
+        console.info(
+          `[useLoadGamepadProfiles] Received ${profiles.length} profiles from backend`,
+        );
+
+        if (profiles.length === 0) {
+          console.warn(
+            "[useLoadGamepadProfiles] No profiles returned (fresh install or no saved profiles)",
+          );
+        } else {
+          console.info(
+            "[useLoadGamepadProfiles] Processing profiles:",
+            profiles,
+          );
+        }
+
         dispatch({ type: "SET_PROFILES", payload: profiles });
+        console.info("[useLoadGamepadProfiles] Profiles dispatched to state");
       } catch (err) {
-        console.error("[GamepadMonitor] Failed to load gamepad profiles:", err);
+        console.error(
+          "[useLoadGamepadProfiles] Failed to load gamepad profiles:",
+          err,
+        );
         dispatch({
           type: "SET_ERROR",
           payload: "Failed to load profiles",

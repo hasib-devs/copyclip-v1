@@ -9,12 +9,9 @@ import Snippets from "@/pages/snippets";
 import Statistics from "@/pages/statistics";
 import { BrowserRouter, Route, Routes } from "react-router";
 import "./App.css";
-import { useGamepadContext } from "./contexts/gamepad-context";
 import { Toaster } from "./components/ui/sonner";
-import {
-  useGamepadMonitor,
-  useLoadGamepadProfiles,
-} from "./hooks/useGamepadMonitor";
+import { useGamepadContext } from "./contexts/gamepad-context";
+import { useGamepadMonitor } from "./hooks/useGamepadMonitor";
 
 function App() {
   const { state, dispatch } = useGamepadContext();
@@ -23,7 +20,7 @@ function App() {
   useGamepadMonitor(state.isListening, dispatch);
 
   // Load profiles on mount
-  useLoadGamepadProfiles(dispatch);
+  // useLoadGamepadProfiles(dispatch);
 
   // Load initial clipboard history from database
   useLoadClipboardHistory();
