@@ -2,6 +2,7 @@ use crate::db::DatabaseService;
 use crate::gamepad::{Gamepad, GamepadProfile};
 use crate::gamepad_manager::GamepadManager;
 use crate::models::{ClipboardItemModel, ClipboardQueryFilter};
+use std::sync::Arc;
 use tauri::State;
 
 /**
@@ -23,7 +24,7 @@ pub fn save_clipboard_item(
     item_type: String,
     image_base64: Option<String>,
     file_paths: Option<String>,
-    db: State<'_, DatabaseService>,
+    db: State<'_, Arc<DatabaseService>>,
 ) -> Result<bool, String> {
     eprintln!(
         "[SAVE] Attempting to save item with id: {}, type: {}, content length: {}",
@@ -98,7 +99,7 @@ pub fn get_clipboard_items(
     is_pinned: Option<bool>,
     limit: u64,
     offset: u64,
-    db: State<'_, DatabaseService>,
+    db: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<ClipboardItemModel>, String> {
     let filter = ClipboardQueryFilter {
         search,
@@ -117,7 +118,7 @@ pub fn get_clipboard_items(
 #[tauri::command]
 pub fn get_clipboard_item(
     id: String,
-    db: State<'_, DatabaseService>,
+    db: State<'_, Arc<DatabaseService>>,
 ) -> Result<Option<ClipboardItemModel>, String> {
     db.get_item(&id).map_err(|e| e.to_string())
 }
@@ -129,7 +130,7 @@ pub fn get_clipboard_item(
 pub fn update_clipboard_item(
     id: String,
     is_pinned: bool,
-    db: State<'_, DatabaseService>,
+    db: State<'_, Arc<DatabaseService>>,
 ) -> Result<bool, String> {
     db.update_item(&id, is_pinned).map_err(|e| e.to_string())?;
     Ok(true)
@@ -139,7 +140,10 @@ pub fn update_clipboard_item(
  * Delete single item
  */
 #[tauri::command]
-pub fn delete_clipboard_item(id: String, db: State<'_, DatabaseService>) -> Result<bool, String> {
+pub fn delete_clipboard_item(
+    id: String,
+    db: State<'_, Arc<DatabaseService>>,
+) -> Result<bool, String> {
     eprintln!("[DELETE] ========================================");
     eprintln!("[DELETE] Attempting to delete item with id: {}", id);
     eprintln!("[DELETE] ========================================");
@@ -166,7 +170,7 @@ pub fn delete_clipboard_item(id: String, db: State<'_, DatabaseService>) -> Resu
  * Clear all clipboard history
  */
 #[tauri::command]
-pub fn clear_clipboard_history(db: State<'_, DatabaseService>) -> Result<bool, String> {
+pub fn clear_clipboard_history(db: State<'_, Arc<DatabaseService>>) -> Result<bool, String> {
     db.delete_all().map_err(|e| e.to_string())?;
     log::info!("Cleared all clipboard history");
     Ok(true)
@@ -176,7 +180,7 @@ pub fn clear_clipboard_history(db: State<'_, DatabaseService>) -> Result<bool, S
  * Get total item count
  */
 #[tauri::command]
-pub fn get_clipboard_count(db: State<'_, DatabaseService>) -> Result<i64, String> {
+pub fn get_clipboard_count(db: State<'_, Arc<DatabaseService>>) -> Result<i64, String> {
     db.count_items().map_err(|e| e.to_string())
 }
 
@@ -185,7 +189,7 @@ pub fn get_clipboard_count(db: State<'_, DatabaseService>) -> Result<i64, String
  */
 #[tauri::command]
 pub fn load_initial_history(
-    db: State<'_, DatabaseService>,
+    db: State<'_, Arc<DatabaseService>>,
 ) -> Result<Vec<ClipboardItemModel>, String> {
     let filter = ClipboardQueryFilter {
         search: None,

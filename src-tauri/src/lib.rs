@@ -6,6 +6,7 @@ mod models;
 
 use db::DatabaseService;
 use gamepad_manager::GamepadManager;
+use std::sync::Arc;
 use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -39,20 +40,25 @@ pub fn run() {
             let db_path = app_data_dir.join("copyclip.db");
 
             // Initialize database synchronously (rusqlite is sync)
-            match DatabaseService::new(db_path) {
+            let db = match DatabaseService::new(db_path) {
                 Ok(db) => {
-                    // Store database service in app state
-                    app_handle.manage(db);
                     log::info!("Database initialized successfully");
+                    Arc::new(db)
                 }
                 Err(e) => {
                     log::error!("Failed to initialize database: {}", e);
+                    return Err(format!("Failed to initialize database: {}", e).into());
                 }
-            }
+            };
+
+            // Store database service in app state
+            app_handle.manage(db.clone());
 
             // Initialize gamepad manager
             match GamepadManager::new() {
                 Ok(gamepad_manager) => {
+                    // Set database for profile persistence
+                    gamepad_manager.set_database(db);
                     app_handle.manage(gamepad_manager);
                     log::info!("Gamepad manager initialized successfully");
                 }

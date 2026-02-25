@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Gamepad, GamepadAction } from "@/types/gamepad.types";
+import { Gamepad, GamepadAction, GamepadProfile } from "@/types/gamepad.types";
 
 /**
  * Hook to monitor and update gamepad state via polling
@@ -40,8 +40,7 @@ export function useLoadGamepadProfiles(
       try {
         console.info("[GamepadMonitor] Loading gamepad profiles...");
         dispatch({ type: "SET_LOADING", payload: true });
-        const profiles = await invoke<any[]>("get_gamepad_profiles");
-        console.log({ profiles });
+        const profiles = await invoke<GamepadProfile[]>("get_gamepad_profiles");
         dispatch({ type: "SET_PROFILES", payload: profiles });
       } catch (err) {
         console.error("[GamepadMonitor] Failed to load gamepad profiles:", err);

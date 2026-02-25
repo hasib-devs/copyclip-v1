@@ -1,8 +1,10 @@
+use crate::db::DatabaseService;
 use crate::gamepad::{
     Gamepad, GamepadAxisIndex, GamepadButton, GamepadButtonIndex, GamepadProfile,
 };
 use enigo::{Enigo, MouseControllable};
 use gilrs::{Axis, Event, EventType, Gilrs, GilrsBuilder};
+use serde_json;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -15,6 +17,7 @@ pub struct GamepadManager {
     active_profile: Arc<Mutex<String>>,
     running: Arc<Mutex<bool>>,
     gilrs: Arc<Mutex<Option<Gilrs>>>,
+    db: Arc<Mutex<Option<Arc<DatabaseService>>>>,
 }
 
 impl GamepadManager {
@@ -31,7 +34,43 @@ impl GamepadManager {
             active_profile: Arc::new(Mutex::new("Default".to_string())),
             running: Arc::new(Mutex::new(false)),
             gilrs: Arc::new(Mutex::new(Some(gilrs))),
+            db: Arc::new(Mutex::new(None)),
         })
+    }
+
+    /// Set the database service for profile persistence
+    pub fn set_database(&self, db: Arc<DatabaseService>) {
+        *self.db.lock().unwrap() = Some(db);
+        // Load profiles from database on initialization
+        self.load_profiles_from_db();
+    }
+
+    /// Load profiles from database into memory cache
+    fn load_profiles_from_db(&self) {
+        if let Some(ref db) = *self.db.lock().unwrap() {
+            match db.get_gamepad_profiles() {
+                Ok(profiles) => {
+                    let mut profiles_map = self.profiles.lock().unwrap();
+                    profiles_map.clear();
+                    for profile_json in profiles {
+                        if let Ok(profile) = serde_json::from_value::<GamepadProfile>(profile_json)
+                        {
+                            profiles_map.insert(profile.name.clone(), profile);
+                        }
+                    }
+                    eprintln!(
+                        "[GamepadManager] Loaded {} profiles from database",
+                        profiles_map.len()
+                    );
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[GamepadManager] Failed to load profiles from database: {}",
+                        e
+                    );
+                }
+            }
+        }
     }
 
     /// Start listening to gamepad input
@@ -174,10 +213,39 @@ impl GamepadManager {
 
     /// Save a gamepad profile
     pub fn save_profile(&self, profile: GamepadProfile) -> Result<(), String> {
+        // Save to memory
         self.profiles
             .lock()
             .unwrap()
-            .insert(profile.name.clone(), profile);
+            .insert(profile.name.clone(), profile.clone());
+
+        // Also save to database if available
+        if let Some(ref db) = *self.db.lock().unwrap() {
+            // Serialize complex fields to JSON
+            let button_map_json =
+                serde_json::to_string(&profile.button_map).unwrap_or_else(|_| "{}".to_string());
+            let axis_map_json =
+                serde_json::to_string(&profile.axis_map).unwrap_or_else(|_| "{}".to_string());
+            let enabled_features_json = serde_json::to_string(&profile.enabled_features)
+                .unwrap_or_else(|_| "{}".to_string());
+
+            let _ = db
+                .save_gamepad_profile(
+                    &profile.name,
+                    &profile.description,
+                    profile.sensitivity,
+                    profile.dead_zone,
+                    profile.acceleration,
+                    &button_map_json,
+                    &axis_map_json,
+                    &enabled_features_json,
+                )
+                .map_err(|e| {
+                    eprintln!("[GamepadManager] Failed to save profile to database: {}", e);
+                    format!("Failed to save profile to database: {}", e)
+                });
+        }
+
         Ok(())
     }
 
@@ -186,12 +254,33 @@ impl GamepadManager {
         if profile_name == "Default" {
             return Err("Cannot delete default profile".to_string());
         }
+
+        // Delete from memory
         self.profiles.lock().unwrap().remove(profile_name);
+
+        // Also delete from database if available
+        if let Some(ref db) = *self.db.lock().unwrap() {
+            let _ = db.delete_gamepad_profile(profile_name).map_err(|e| {
+                eprintln!(
+                    "[GamepadManager] Failed to delete profile from database: {}",
+                    e
+                );
+                format!("Failed to delete profile from database: {}", e)
+            });
+        }
+
         Ok(())
     }
 
     /// Get all profiles
     pub fn get_profiles(&self) -> Result<Vec<GamepadProfile>, String> {
+        // If database is available and cache is empty, try loading from DB
+        if self.profiles.lock().unwrap().is_empty() {
+            if self.db.lock().unwrap().is_some() {
+                self.load_profiles_from_db();
+            }
+        }
+
         let profiles = self.profiles.lock().unwrap();
         Ok(profiles.values().cloned().collect())
     }

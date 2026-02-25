@@ -1,5 +1,6 @@
 use chrono::Utc;
 use rusqlite::{Connection, OptionalExtension, Result as SqliteResult};
+use serde_json;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -61,6 +62,30 @@ impl DatabaseService {
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_item_type ON clipboard_items(item_type);",
+            [],
+        )?;
+
+        // Create gamepad profiles table
+        conn.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS gamepad_profiles (
+                name TEXT PRIMARY KEY,
+                description TEXT NOT NULL,
+                sensitivity REAL NOT NULL,
+                dead_zone REAL NOT NULL,
+                acceleration REAL NOT NULL,
+                button_map TEXT NOT NULL,
+                axis_map TEXT NOT NULL,
+                enabled_features TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+            "#,
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_profile_created ON gamepad_profiles(created_at DESC);",
             [],
         )?;
 
@@ -321,5 +346,92 @@ impl DatabaseService {
 
         eprintln!("[DB::CHECK_DUP] Query result: count={}", count);
         Ok(count > 0)
+    }
+
+    /**
+     * Save or update a gamepad profile
+     */
+    pub fn save_gamepad_profile(
+        &self,
+        name: &str,
+        description: &str,
+        sensitivity: f32,
+        dead_zone: f32,
+        acceleration: f32,
+        button_map_json: &str,
+        axis_map_json: &str,
+        enabled_features_json: &str,
+    ) -> SqliteResult<usize> {
+        eprintln!("[DB::SAVE_PROFILE] Saving profile: {}", name);
+        let conn = self.conn.lock().unwrap();
+        let now = Utc::now().timestamp_millis();
+
+        let mut stmt = conn.prepare(
+            "SELECT COUNT(*) FROM gamepad_profiles WHERE name = ?"
+        )?;
+
+        let exists: bool = stmt.exists(rusqlite::params![name])?;
+        drop(stmt);
+
+        if exists {
+            conn.execute(
+                "UPDATE gamepad_profiles SET description = ?, sensitivity = ?, dead_zone = ?, acceleration = ?, button_map = ?, axis_map = ?, enabled_features = ?, updated_at = ? WHERE name = ?",
+                rusqlite::params![description, sensitivity as f64, dead_zone as f64, acceleration as f64, button_map_json, axis_map_json, enabled_features_json, now, name],
+            )
+        } else {
+            conn.execute(
+                "INSERT INTO gamepad_profiles (name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                rusqlite::params![name, description, sensitivity as f64, dead_zone as f64, acceleration as f64, button_map_json, axis_map_json, enabled_features_json, now, now],
+            )
+        }
+    }
+
+    /**
+     * Get all gamepad profiles as JSON
+     */
+    pub fn get_gamepad_profiles(
+        &self,
+    ) -> SqliteResult<Vec<serde_json::Value>> {
+        eprintln!("[DB::GET_PROFILES] Fetching all profiles");
+        let conn = self.conn.lock().unwrap();
+
+        let mut stmt = conn.prepare(
+            "SELECT name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features FROM gamepad_profiles ORDER BY created_at DESC"
+        )?;
+
+        let profiles = stmt.query_map([], |row| {
+            Ok(serde_json::json!({
+                "name": row.get::<_, String>(0)?,
+                "description": row.get::<_, String>(1)?,
+                "sensitivity": row.get::<_, f64>(2)? as f32,
+                "dead_zone": row.get::<_, f64>(3)? as f32,
+                "acceleration": row.get::<_, f64>(4)? as f32,
+                "button_map": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(5)?).unwrap_or_default(),
+                "axis_map": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(6)?).unwrap_or_default(),
+                "enabled_features": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(7)?).unwrap_or_default(),
+            }))
+        })?;
+
+        let mut result = Vec::new();
+        for profile in profiles {
+            if let Ok(p) = profile {
+                result.push(p);
+            }
+        }
+
+        Ok(result)
+    }
+
+    /**
+     * Delete a gamepad profile
+     */
+    pub fn delete_gamepad_profile(&self, name: &str) -> SqliteResult<usize> {
+        eprintln!("[DB::DELETE_PROFILE] Deleting profile: {}", name);
+        let conn = self.conn.lock().unwrap();
+
+        conn.execute(
+            "DELETE FROM gamepad_profiles WHERE name = ?",
+            rusqlite::params![name],
+        )
     }
 }
