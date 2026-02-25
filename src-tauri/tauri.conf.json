@@ -22,12 +22,12 @@
         "decorations": false,
         "transparent": false,
         "focus": true,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "acceptFirstMouse": true,
         "allowLinkPreview": true,
         "minimizable": true,
         "devtools": true,
-        "visible": false,
+        "visible": true,
         "center": true
       }
     ],

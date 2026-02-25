@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { AlertCircle, Gamepad2, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "./ui/alert";
 import {
   Card,
   CardContent,
@@ -7,12 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Button } from "./ui/button";
+import { Label } from "./ui/label";
 import { Slider } from "./ui/slider";
 import { Switch } from "./ui/switch";
-import { Label } from "./ui/label";
-import { Alert, AlertDescription } from "./ui/alert";
-import { AlertCircle, Gamepad2, Zap } from "lucide-react";
 
 interface ControllerState {
   connected: boolean;
@@ -48,31 +47,9 @@ export function ControllerConfig() {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load settings on mount
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  // Start polling controller state when enabled
-  useEffect(() => {
-    if (!isListening) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const controllerState = await invoke<ControllerState>(
-          "get_controller_state",
-        );
-        setState(controllerState);
-      } catch (err) {
-        console.error("Failed to get controller state:", err);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isListening]);
-
   const loadSettings = async () => {
     try {
+      console.info("[ControllerConfig] Loading controller settings...");
       const loadedSettings = await invoke<ControllerSettings>(
         "get_controller_settings",
       );
@@ -83,8 +60,9 @@ export function ControllerConfig() {
     }
   };
 
-  const handleStartController = async () => {
+  const startControllerListener = async () => {
     try {
+      console.info("[ControllerConfig] Starting controller listener...");
       setError(null);
       await invoke("start_controller");
       setIsListening(true);
@@ -95,8 +73,24 @@ export function ControllerConfig() {
     }
   };
 
+  const handleStartController = async () => {
+    try {
+      if (isListening) {
+        console.warn("[ControllerConfig] Controller listener already active");
+        await handleStopController();
+        setError(null);
+      }
+
+      await startControllerListener();
+    } catch (error) {
+      console.error("Error starting controller listener:", error);
+      setError("Failed to start controller listener");
+    }
+  };
+
   const handleStopController = async () => {
     try {
+      console.info("[ControllerConfig] Stopping controller listener...");
       setError(null);
       await invoke("stop_controller");
       setIsListening(false);
@@ -109,6 +103,9 @@ export function ControllerConfig() {
 
   const handleToggleEnabled = async (enabled: boolean) => {
     try {
+      console.info(
+        `[ControllerConfig] Toggling controller enabled: ${enabled}`,
+      );
       setError(null);
       const updatedSettings = { ...settings, enabled };
       await invoke("update_controller_settings", {
@@ -131,11 +128,19 @@ export function ControllerConfig() {
     }
   };
 
+  /**
+   * Update a specific controller setting and persist it to the backend
+   * @param setting  The setting key to update (sensitivity, dead_zone, acceleration)
+   * @param value   The new value for the setting
+   */
   const updateSetting = async (
     setting: keyof ControllerSettings,
     value: number,
   ) => {
     try {
+      console.info(
+        `[ControllerConfig] Updating setting ${setting} to ${value}`,
+      );
       setError(null);
       const updatedSettings = { ...settings, [setting]: value };
       await invoke("update_controller_settings", {
@@ -151,6 +156,39 @@ export function ControllerConfig() {
       console.error("Failed to update setting:", err);
     }
   };
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  // Start polling controller state when enabled
+  useEffect(() => {
+    if (!isListening) {
+      handleStartController().catch((err) => {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        setError(errorMsg);
+        console.error("Failed to start controller:", err);
+      });
+    }
+
+    // const interval = setInterval(async () => {
+    //   try {
+    //     const controllerState = await invoke<ControllerState>(
+    //       "get_controller_state",
+    //     );
+    //     console.info(
+    //       "[ControllerConfig] Fetched controller state:",
+    //       controllerState,
+    //     );
+    //     setState(controllerState);
+    //   } catch (err) {
+    //     console.error("Failed to get controller state:", err);
+    //   }
+    // }, 200);
+
+    // return () => clearInterval(interval);
+  }, [isListening]);
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4 space-y-6">
@@ -292,7 +330,7 @@ export function ControllerConfig() {
           {/* Control Instructions */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm space-y-2">
             <div className="flex gap-2">
-              <Zap className="w-4 h-4 flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <Zap className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
               <div>
                 <p className="font-semibold text-blue-900 dark:text-blue-100">
                   Controls

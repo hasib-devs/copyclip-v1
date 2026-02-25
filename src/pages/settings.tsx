@@ -38,7 +38,7 @@ const Settings = () => {
         <Accordion
           type="single"
           collapsible
-          value={"general"}
+          defaultValue="general"
           className="w-full"
         >
           {/* General Section */}
