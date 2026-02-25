@@ -2,7 +2,7 @@ use crate::db::DatabaseService;
 use crate::gamepad::{
     Gamepad, GamepadAxisIndex, GamepadButton, GamepadButtonIndex, GamepadProfile,
 };
-use enigo::{Enigo, MouseControllable};
+use enigo::{Enigo, KeyboardControllable, MouseControllable};
 use gilrs::{Axis, Event, EventType, Gilrs, GilrsBuilder};
 use serde_json;
 use std::collections::HashMap;
@@ -349,10 +349,29 @@ impl GamepadManager {
     fn map_button_to_gamepad(button: gilrs::Button) -> Option<GamepadButtonIndex> {
         use gilrs::Button::*;
         Some(match button {
+            // Face buttons
             South => GamepadButtonIndex::South,
             East => GamepadButtonIndex::East,
             West => GamepadButtonIndex::West,
             North => GamepadButtonIndex::North,
+            // Shoulder buttons
+            LeftTrigger => GamepadButtonIndex::LT,
+            RightTrigger => GamepadButtonIndex::RT,
+            LeftTrigger2 => GamepadButtonIndex::LB,
+            RightTrigger2 => GamepadButtonIndex::RB,
+            // Menu buttons
+            Select => GamepadButtonIndex::Select,
+            Start => GamepadButtonIndex::Start,
+            // Stick clicks
+            LeftThumb => GamepadButtonIndex::LeftStick,
+            RightThumb => GamepadButtonIndex::RightStick,
+            // Guide/Home
+            Mode => GamepadButtonIndex::Guide,
+            // D-Pad buttons
+            DPadUp => GamepadButtonIndex::DPadUp,
+            DPadDown => GamepadButtonIndex::DPadDown,
+            DPadLeft => GamepadButtonIndex::DPadLeft,
+            DPadRight => GamepadButtonIndex::DPadRight,
             _ => return None,
         })
     }
@@ -500,6 +519,137 @@ impl GamepadManager {
                 thread::sleep(Duration::from_millis(10));
                 let _ = enigo.mouse_up(enigo::MouseButton::Right);
             }
+
+            // D-Pad keyboard emulation
+            // D-Pad Up = Page Up
+            let dpad_up = gamepad
+                .get_button(GamepadButtonIndex::DPadUp)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let dpad_up_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::DPadUp))
+                .copied()
+                .unwrap_or(false);
+            if dpad_up && !dpad_up_was_pressed {
+                eprintln!("[Keyboard] D-Pad Up -> Page Up");
+                Self::emit_key_press(enigo::Key::PageUp);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::DPadUp), dpad_up);
+
+            // D-Pad Down = Page Down
+            let dpad_down = gamepad
+                .get_button(GamepadButtonIndex::DPadDown)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let dpad_down_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::DPadDown))
+                .copied()
+                .unwrap_or(false);
+            if dpad_down && !dpad_down_was_pressed {
+                eprintln!("[Keyboard] D-Pad Down -> Page Down");
+                Self::emit_key_press(enigo::Key::PageDown);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::DPadDown), dpad_down);
+
+            // D-Pad Left = Browser Back (Cmd+[)
+            let dpad_left = gamepad
+                .get_button(GamepadButtonIndex::DPadLeft)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let dpad_left_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::DPadLeft))
+                .copied()
+                .unwrap_or(false);
+            if dpad_left && !dpad_left_was_pressed {
+                eprintln!("[Keyboard] D-Pad Left -> Browser Back (Cmd+[)");
+                // Use arrow left as alternative since bracket might not be reliable
+                Self::emit_key_combination(&[enigo::Key::Meta, enigo::Key::LeftArrow]);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::DPadLeft), dpad_left);
+
+            // D-Pad Right = Browser Forward (Cmd+])
+            let dpad_right = gamepad
+                .get_button(GamepadButtonIndex::DPadRight)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let dpad_right_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::DPadRight))
+                .copied()
+                .unwrap_or(false);
+            if dpad_right && !dpad_right_was_pressed {
+                eprintln!("[Keyboard] D-Pad Right -> Browser Forward (Cmd+])");
+                // Use arrow right as alternative since bracket might not be reliable
+                Self::emit_key_combination(&[enigo::Key::Meta, enigo::Key::RightArrow]);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::DPadRight), dpad_right);
+
+            // Cross button (South) = Enter
+            let cross = gamepad
+                .get_button(GamepadButtonIndex::South)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let cross_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::South))
+                .copied()
+                .unwrap_or(false);
+            if cross && !cross_was_pressed {
+                eprintln!("[Keyboard] Cross -> Enter");
+                Self::emit_key_press(enigo::Key::Return);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::South), cross);
+
+            // Square button (West) = Escape
+            let square = gamepad
+                .get_button(GamepadButtonIndex::West)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let square_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::West))
+                .copied()
+                .unwrap_or(false);
+            if square && !square_was_pressed {
+                eprintln!("[Keyboard] Square -> Escape");
+                Self::emit_key_press(enigo::Key::Escape);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::West), square);
+
+            // Circle button (East) = Delete
+            let circle = gamepad
+                .get_button(GamepadButtonIndex::East)
+                .map(|b| b.pressed)
+                .unwrap_or(false);
+            let circle_was_pressed = button_state
+                .get(&(gamepad.index, GamepadButtonIndex::East))
+                .copied()
+                .unwrap_or(false);
+            if circle && !circle_was_pressed {
+                eprintln!("[Keyboard] Circle -> Delete");
+                Self::emit_key_press(enigo::Key::Delete);
+            }
+            button_state.insert((gamepad.index, GamepadButtonIndex::East), circle);
+
+            // Triangle button (North) = Not mapped yet
+            // Can add additional mappings here as needed
+        }
+    }
+
+    /// Emit a single key press
+    fn emit_key_press(key: enigo::Key) {
+        let mut enigo = Enigo::new();
+        let _ = enigo.key_click(key);
+    }
+
+    /// Emit multiple key presses for key combinations (like Cmd+arrow)
+    fn emit_key_combination(keys: &[enigo::Key]) {
+        let mut enigo = Enigo::new();
+        // Press all keys
+        for key in keys {
+            let _ = enigo.key_down(*key);
+        }
+        thread::sleep(Duration::from_millis(10));
+        // Release all keys in reverse order
+        for key in keys.iter().rev() {
+            let _ = enigo.key_up(*key);
         }
     }
 }

@@ -36,7 +36,7 @@ export function ControllerConfig() {
     enabled: false,
   });
 
-  const [state, setState] = useState<ControllerState>({
+  const [state, _setState] = useState<ControllerState>({
     connected: false,
     left_stick_x: 0,
     left_stick_y: 0,

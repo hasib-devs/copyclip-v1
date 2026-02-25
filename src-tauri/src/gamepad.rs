@@ -40,6 +40,11 @@ pub enum GamepadButtonIndex {
     RightStick = 11,
     // Guide/Home
     Guide = 12,
+    // D-Pad buttons
+    DPadUp = 13,
+    DPadDown = 14,
+    DPadLeft = 15,
+    DPadRight = 16,
 }
 
 /// Standard gamepad axes indices (following HTML Gamepad API)

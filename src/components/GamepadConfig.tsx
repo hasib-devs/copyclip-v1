@@ -215,6 +215,103 @@ export function GamepadConfig() {
           )}
 
           {/* Control Instructions */}
+          <div className="space-y-4 border-t pt-4">
+            <Label className="text-base font-semibold">Feature Settings</Label>
+
+            {/* Scroll Control Settings */}
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">Right Stick Scroll</Label>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✓ Enabled
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Move right stick up/down to scroll, left/right for horizontal
+                scroll
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Vertical Speed</Label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="5"
+                    step="0.1"
+                    defaultValue="1.5"
+                    className="w-full"
+                  />
+                  <div className="text-xs text-muted-foreground">1.5x</div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Horizontal Speed</Label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="5"
+                    step="0.1"
+                    defaultValue="1.5"
+                    className="w-full"
+                  />
+                  <div className="text-xs text-muted-foreground">1.5x</div>
+                </div>
+              </div>
+              <div className="flex gap-4 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded" />
+                  <span>Reverse Vertical</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="rounded" />
+                  <span>Reverse Horizontal</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Keyboard Emulation Settings */}
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">Keyboard Emulation</Label>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✓ Enabled
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                D-Pad and face buttons mapped to keyboard shortcuts
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-sm font-mono bg-black/5 dark:bg-white/5 p-3 rounded">
+                <div>D-Pad ↑: Page Up</div>
+                <div>D-Pad ↓: Page Down</div>
+                <div>D-Pad ←: Back (Cmd+←)</div>
+                <div>D-Pad →: Forward (Cmd+→)</div>
+                <div>Cross (X): Return/Enter</div>
+                <div>Square: Escape</div>
+                <div>Circle: Delete</div>
+                <div>Triangle: (Available)</div>
+              </div>
+            </div>
+
+            {/* Multi-Click Settings */}
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center justify-between">
+                <Label className="font-medium">Multi-Click Buttons</Label>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✓ Enabled
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Additional click options for advanced interaction
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-sm font-mono bg-black/5 dark:bg-white/5 p-3 rounded">
+                <div>LB (L1): Middle Click</div>
+                <div>RB (R1): Double Click</div>
+                <div>RT (R2): Left Click</div>
+                <div>LT (L2): Right Click</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Control Instructions */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm space-y-2">
             <div className="flex gap-2">
               <Zap className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
@@ -223,9 +320,32 @@ export function GamepadConfig() {
                   Default Controls (Any Gamepad)
                 </p>
                 <ul className="list-disc list-inside text-blue-800 dark:text-blue-200 space-y-1 mt-1">
-                  <li>Left Stick / D-Pad: Move cursor</li>
-                  <li>Right Trigger (RT/R2): Left click</li>
-                  <li>Left Trigger (LT/L2): Right click</li>
+                  <li>
+                    <strong>Left Stick:</strong> Move cursor
+                  </li>
+                  <li>
+                    <strong>Right Stick:</strong> Scroll in any direction
+                  </li>
+                  <li>
+                    <strong>RT/R2:</strong> Left click
+                  </li>
+                  <li>
+                    <strong>LT/L2:</strong> Right click
+                  </li>
+                  <li>
+                    <strong>RB/R1:</strong> Double click
+                  </li>
+                  <li>
+                    <strong>LB/L1:</strong> Middle click
+                  </li>
+                  <li>
+                    <strong>D-Pad:</strong> Navigate (Page Up/Down, Browser
+                    Back/Forward)
+                  </li>
+                  <li>
+                    <strong>Face Buttons:</strong> Keyboard shortcuts (Enter,
+                    Escape, Delete)
+                  </li>
                   <li>
                     Works with PS5, PS4, Xbox, Nintendo and other standard
                     gamepads
