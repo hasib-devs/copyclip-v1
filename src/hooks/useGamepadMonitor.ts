@@ -17,7 +17,9 @@ export function useGamepadMonitor(
       return;
     }
 
-    console.info("[GamepadMonitor] Starting gamepad polling loop (backend already listening)...");
+    console.info(
+      "[GamepadMonitor] Starting gamepad polling loop (backend already listening)...",
+    );
     const interval = setInterval(async () => {
       try {
         console.info("[GamepadMonitor] Polling gamepads...");

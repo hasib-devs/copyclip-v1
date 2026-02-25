@@ -5,7 +5,7 @@ export const initialGamepadState: GamepadContextState = {
   activeGamepadIndex: 0,
   profiles: [],
   activeProfile: null,
-  isListening: true,  // Gamepad listener starts on app startup
+  isListening: true, // Gamepad listener starts on app startup
   isLoading: false,
   error: null,
 };
