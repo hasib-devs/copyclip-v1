@@ -73,16 +73,16 @@ impl GamepadManager {
                         }
                     }
                     let mut profiles_map = self.profiles.lock().unwrap();
-                    
+
                     // Keep the default profile that was created on init
                     let default_profile = profiles_map.get("Default").cloned();
                     profiles_map.clear();
-                    
+
                     // Restore default profile
                     if let Some(default) = default_profile {
                         profiles_map.insert("Default".to_string(), default);
                     }
-                    
+
                     for profile_json in profiles {
                         match serde_json::from_value::<GamepadProfile>(profile_json.clone()) {
                             Ok(profile) => {
@@ -209,7 +209,9 @@ impl GamepadManager {
             }
         });
 
-        eprintln!("[GamepadManager::start] Gamepad listener thread spawned successfully, returning Ok");
+        eprintln!(
+            "[GamepadManager::start] Gamepad listener thread spawned successfully, returning Ok"
+        );
         Ok(())
     }
 

@@ -67,6 +67,18 @@ pub fn run() {
                         "[AppSetup] Setting database on GamepadManager (will load profiles)..."
                     );
                     gamepad_manager.set_database(db);
+                    
+                    // Start listening for gamepads immediately
+                    eprintln!("[AppSetup] Starting gamepad listener on app startup...");
+                    match gamepad_manager.start() {
+                        Ok(_) => {
+                            eprintln!("[AppSetup] Gamepad listener started successfully");
+                        }
+                        Err(e) => {
+                            eprintln!("[AppSetup] Failed to start gamepad listener: {}", e);
+                        }
+                    }
+                    
                     eprintln!("[AppSetup] Managing GamepadManager in Tauri state");
                     app_handle.manage(gamepad_manager);
                     log::info!("Gamepad manager initialized successfully");

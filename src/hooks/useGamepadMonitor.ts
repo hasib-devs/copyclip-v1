@@ -12,8 +12,12 @@ export function useGamepadMonitor(
   pollInterval: number = 100, // ms
 ) {
   useEffect(() => {
-    if (!isListening) return;
+    if (!isListening) {
+      console.info("[GamepadMonitor] Not listening, skipping polling");
+      return;
+    }
 
+    console.info("[GamepadMonitor] Starting gamepad polling loop (backend already listening)...");
     const interval = setInterval(async () => {
       try {
         console.info("[GamepadMonitor] Polling gamepads...");
@@ -25,7 +29,10 @@ export function useGamepadMonitor(
       }
     }, pollInterval);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.info("[GamepadMonitor] Stopping polling loop");
+      clearInterval(interval);
+    };
   }, [isListening, dispatch, pollInterval]);
 }
 
