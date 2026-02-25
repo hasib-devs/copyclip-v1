@@ -3,6 +3,7 @@ mod db;
 mod gamepad;
 mod gamepad_manager;
 mod models;
+mod scroll;
 
 use db::DatabaseService;
 use gamepad_manager::GamepadManager;

@@ -2,6 +2,7 @@ use crate::db::DatabaseService;
 use crate::gamepad::{
     Gamepad, GamepadAxisIndex, GamepadButton, GamepadButtonIndex, GamepadProfile,
 };
+use crate::scroll;
 use enigo::{Enigo, KeyboardControllable, MouseControllable};
 use gilrs::{Axis, Event, EventType, Gilrs, GilrsBuilder};
 use serde_json;
@@ -444,8 +445,8 @@ impl GamepadManager {
                     vertical_scroll, horizontal_scroll
                 );
 
-                // TODO: Implement scroll via platform-specific API
-                // For now, just log to verify detection
+                // Emit scroll event using platform-specific implementation
+                let _ = scroll::scroll(vertical_scroll, horizontal_scroll);
             }
 
             // Middle click via LB button
