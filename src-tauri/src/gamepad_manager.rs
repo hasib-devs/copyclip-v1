@@ -392,7 +392,7 @@ impl GamepadManager {
 
             if stick_x.abs() > 0.05 || stick_y.abs() > 0.05 {
                 let dx = (stick_x * 10.0) as i32;
-                let dy = (stick_y * 10.0) as i32;
+                let dy = -(stick_y * 10.0) as i32;  // Invert Y axis for correct mouse movement
 
                 let mut enigo = Enigo::new();
                 let _ = enigo.mouse_move_relative(dx, dy);
