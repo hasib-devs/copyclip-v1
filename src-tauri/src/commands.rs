@@ -209,8 +209,11 @@ pub fn load_initial_history(
  */
 #[tauri::command]
 pub fn start_gamepad(gamepad: State<'_, GamepadManager>) -> Result<String, String> {
-    gamepad.start()?;
-    Ok("Gamepad listener started".to_string())
+    eprintln!("[Commands::start_gamepad] Calling gamepad.start()...");
+    gamepad.start().map(|_| {
+        eprintln!("[Commands::start_gamepad] Successfully started");
+        "Gamepad listener started".to_string()
+    })
 }
 
 /**
@@ -218,7 +221,9 @@ pub fn start_gamepad(gamepad: State<'_, GamepadManager>) -> Result<String, Strin
  */
 #[tauri::command]
 pub fn stop_gamepad(gamepad: State<'_, GamepadManager>) -> Result<String, String> {
+    eprintln!("[Commands::stop_gamepad] Calling gamepad.stop()...");
     gamepad.stop();
+    eprintln!("[Commands::stop_gamepad] Successfully stopped");
     Ok("Gamepad listener stopped".to_string())
 }
 
@@ -259,8 +264,11 @@ pub fn save_gamepad_profile(
     profile: GamepadProfile,
     gamepad: State<'_, GamepadManager>,
 ) -> Result<String, String> {
-    gamepad.save_profile(profile)?;
-    Ok("Profile saved".to_string())
+    eprintln!("[Commands::save_gamepad_profile] Saving profile: {}", profile.name);
+    gamepad.save_profile(profile).map(|_| {
+        eprintln!("[Commands::save_gamepad_profile] Profile saved successfully");
+        "Profile saved".to_string()
+    })
 }
 
 /**

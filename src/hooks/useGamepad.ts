@@ -16,16 +16,23 @@ export function useGamepad(
    */
   const startListening = useCallback(async () => {
     try {
+      console.info("[useGamepad::startListening] Starting gamepad listener...");
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "RESET_ERROR" });
 
+      console.info("[useGamepad::startListening] Invoking 'start_gamepad' command...");
       await invoke("start_gamepad");
+      console.info("[useGamepad::startListening] start_gamepad command succeeded");
+      
       dispatch({ type: "SET_LISTENING", payload: true });
 
       // Fetch initial gamepads
+      console.info("[useGamepad::startListening] Fetching connected gamepads...");
       const gamepads = await invoke<Gamepad[]>("get_gamepads");
+      console.info("[useGamepad::startListening] Found", gamepads.length, "connected gamepads");
       dispatch({ type: "SET_GAMEPADS", payload: gamepads });
     } catch (err) {
+      console.error("[useGamepad::startListening] Failed:", err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       dispatch({ type: "SET_ERROR", payload: errorMsg });
       console.error("Failed to start gamepad listener:", err);
@@ -39,10 +46,16 @@ export function useGamepad(
    */
   const stopListening = useCallback(async () => {
     try {
+      console.info("[useGamepad::stopListening] Stopping gamepad listener...");
       dispatch({ type: "SET_ERROR", payload: null });
+      
+      console.info("[useGamepad::stopListening] Invoking 'stop_gamepad' command...");
       await invoke("stop_gamepad");
+      console.info("[useGamepad::stopListening] stop_gamepad command succeeded");
+      
       dispatch({ type: "SET_LISTENING", payload: false });
     } catch (err) {
+      console.error("[useGamepad::stopListening] Failed:", err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       dispatch({ type: "SET_ERROR", payload: errorMsg });
       console.error("Failed to stop gamepad listener:", err);

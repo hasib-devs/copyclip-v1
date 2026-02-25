@@ -28,9 +28,13 @@ impl GamepadManager {
             .build()
             .map_err(|e| format!("Failed to initialize gilrs: {}", e))?;
 
+        // Create default profile in memory
+        let mut default_profiles = HashMap::new();
+        default_profiles.insert("Default".to_string(), GamepadProfile::default());
+
         Ok(Self {
             gamepads: Arc::new(Mutex::new(HashMap::new())),
-            profiles: Arc::new(Mutex::new(HashMap::new())),
+            profiles: Arc::new(Mutex::new(default_profiles)),
             active_profile: Arc::new(Mutex::new("Default".to_string())),
             running: Arc::new(Mutex::new(false)),
             gilrs: Arc::new(Mutex::new(Some(gilrs))),
@@ -69,7 +73,16 @@ impl GamepadManager {
                         }
                     }
                     let mut profiles_map = self.profiles.lock().unwrap();
+                    
+                    // Keep the default profile that was created on init
+                    let default_profile = profiles_map.get("Default").cloned();
                     profiles_map.clear();
+                    
+                    // Restore default profile
+                    if let Some(default) = default_profile {
+                        profiles_map.insert("Default".to_string(), default);
+                    }
+                    
                     for profile_json in profiles {
                         match serde_json::from_value::<GamepadProfile>(profile_json.clone()) {
                             Ok(profile) => {
@@ -192,11 +205,11 @@ impl GamepadManager {
 
                 // Process gamepad input for mouse/keyboard control
                 Self::process_gamepad_input(&gamepads);
-
                 thread::sleep(Duration::from_millis(16)); // ~60 FPS
             }
         });
 
+        eprintln!("[GamepadManager::start] Gamepad listener thread spawned successfully, returning Ok");
         Ok(())
     }
 
