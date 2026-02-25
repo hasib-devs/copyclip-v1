@@ -1,7 +1,9 @@
 mod commands;
+mod controller;
 mod db;
 mod models;
 
+use controller::ControllerManager;
 use db::DatabaseService;
 use tauri::Manager;
 
@@ -47,6 +49,11 @@ pub fn run() {
                 }
             }
 
+            // Initialize controller manager
+            let controller_manager = ControllerManager::new();
+            app_handle.manage(controller_manager);
+            log::info!("Controller manager initialized");
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -59,6 +66,11 @@ pub fn run() {
             commands::clear_clipboard_history,
             commands::get_clipboard_count,
             commands::load_initial_history,
+            commands::start_controller,
+            commands::stop_controller,
+            commands::get_controller_state,
+            commands::get_controller_settings,
+            commands::update_controller_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

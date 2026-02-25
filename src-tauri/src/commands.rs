@@ -1,5 +1,6 @@
 use crate::db::DatabaseService;
 use crate::models::{ClipboardItemModel, ClipboardQueryFilter};
+use crate::controller::{ControllerManager, ControllerSettings, ControllerState};
 use tauri::State;
 
 /**
@@ -194,4 +195,66 @@ pub fn load_initial_history(
     };
 
     db.get_items(filter).map_err(|e| e.to_string())
+}
+
+// ============= CONTROLLER COMMANDS =============
+
+/**
+ * Start PS5 controller listener
+ */
+#[tauri::command]
+pub fn start_controller(controller: State<'_, ControllerManager>) -> Result<String, String> {
+    controller.start()?;
+    Ok("Controller listener started".to_string())
+}
+
+/**
+ * Stop PS5 controller listener
+ */
+#[tauri::command]
+pub fn stop_controller(controller: State<'_, ControllerManager>) -> Result<String, String> {
+    controller.stop();
+    Ok("Controller listener stopped".to_string())
+}
+
+/**
+ * Get current controller state
+ */
+#[tauri::command]
+pub fn get_controller_state(
+    controller: State<'_, ControllerManager>,
+) -> Result<ControllerState, String> {
+    controller.get_state()
+}
+
+/**
+ * Get current controller settings
+ */
+#[tauri::command]
+pub fn get_controller_settings(
+    controller: State<'_, ControllerManager>,
+) -> Result<ControllerSettings, String> {
+    controller.get_settings()
+}
+
+/**
+ * Update controller settings
+ */
+#[tauri::command]
+pub fn update_controller_settings(
+    sensitivity: f32,
+    dead_zone: f32,
+    acceleration: f32,
+    enabled: bool,
+    controller: State<'_, ControllerManager>,
+) -> Result<String, String> {
+    let settings = ControllerSettings {
+        sensitivity: sensitivity.clamp(0.5, 3.0),
+        dead_zone: dead_zone.clamp(0.0, 0.3),
+        acceleration: acceleration.clamp(0.8, 2.0),
+        enabled,
+    };
+    
+    controller.update_settings(settings)?;
+    Ok("Settings updated".to_string())
 }

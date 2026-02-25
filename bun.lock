@@ -5,6 +5,7 @@
       "name": "copyclip",
       "dependencies": {
         "@base-ui/react": "^1.2.0",
+        "@radix-ui/react-slider": "^1.2.1",
         "@tauri-apps/api": "^2",
         "@tauri-apps/plugin-dialog": "~2",
         "@tauri-apps/plugin-opener": "^2",
