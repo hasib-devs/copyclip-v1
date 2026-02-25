@@ -1,10 +1,11 @@
 mod commands;
-mod controller;
 mod db;
+mod gamepad;
+mod gamepad_manager;
 mod models;
 
-use controller::ControllerManager;
 use db::DatabaseService;
+use gamepad_manager::GamepadManager;
 use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -49,10 +50,16 @@ pub fn run() {
                 }
             }
 
-            // Initialize controller manager
-            let controller_manager = ControllerManager::new();
-            app_handle.manage(controller_manager);
-            log::info!("Controller manager initialized");
+            // Initialize gamepad manager
+            match GamepadManager::new() {
+                Ok(gamepad_manager) => {
+                    app_handle.manage(gamepad_manager);
+                    log::info!("Gamepad manager initialized successfully");
+                }
+                Err(e) => {
+                    log::error!("Failed to initialize gamepad manager: {}", e);
+                }
+            }
 
             Ok(())
         })
@@ -66,11 +73,14 @@ pub fn run() {
             commands::clear_clipboard_history,
             commands::get_clipboard_count,
             commands::load_initial_history,
-            commands::start_controller,
-            commands::stop_controller,
-            commands::get_controller_state,
-            commands::get_controller_settings,
-            commands::update_controller_settings,
+            commands::start_gamepad,
+            commands::stop_gamepad,
+            commands::get_gamepads,
+            commands::get_gamepad,
+            commands::get_gamepad_profiles,
+            commands::save_gamepad_profile,
+            commands::delete_gamepad_profile,
+            commands::set_active_gamepad_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

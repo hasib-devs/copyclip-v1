@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ControllerConfig } from "@/components/ControllerConfig";
+import { GamepadConfig } from "@/components/GamepadConfig";
 import { cn } from "@/lib/utils";
 
 const Settings = () => {
@@ -164,21 +164,18 @@ const Settings = () => {
             </AccordionContent>
           </AccordionItem>
 
-          {/* PS5 Controller Section */}
-          <AccordionItem
-            value="controller"
-            className="border-b border-slate-200"
-          >
+          {/* Gamepad Section */}
+          <AccordionItem value="gamepad" className="border-b border-slate-200">
             <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
               <div className="flex items-center gap-3">
                 <span>🎮</span>
                 <span className="font-medium text-slate-900">
-                  PS5 Controller
+                  Gamepad Input
                 </span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 py-4 bg-slate-50">
-              <ControllerConfig />
+              <GamepadConfig />
             </AccordionContent>
           </AccordionItem>
         </Accordion>

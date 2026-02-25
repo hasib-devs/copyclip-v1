@@ -1,6 +1,7 @@
 use crate::db::DatabaseService;
+use crate::gamepad::{Gamepad, GamepadProfile};
+use crate::gamepad_manager::GamepadManager;
 use crate::models::{ClipboardItemModel, ClipboardQueryFilter};
-use crate::controller::{ControllerManager, ControllerSettings, ControllerState};
 use tauri::State;
 
 /**
@@ -197,64 +198,87 @@ pub fn load_initial_history(
     db.get_items(filter).map_err(|e| e.to_string())
 }
 
-// ============= CONTROLLER COMMANDS =============
+// ============= GAMEPAD COMMANDS =============
 
 /**
- * Start PS5 controller listener
+ * Start gamepad listener
  */
 #[tauri::command]
-pub fn start_controller(controller: State<'_, ControllerManager>) -> Result<String, String> {
-    controller.start()?;
-    Ok("Controller listener started".to_string())
+pub fn start_gamepad(gamepad: State<'_, GamepadManager>) -> Result<String, String> {
+    gamepad.start()?;
+    Ok("Gamepad listener started".to_string())
 }
 
 /**
- * Stop PS5 controller listener
+ * Stop gamepad listener
  */
 #[tauri::command]
-pub fn stop_controller(controller: State<'_, ControllerManager>) -> Result<String, String> {
-    controller.stop();
-    Ok("Controller listener stopped".to_string())
+pub fn stop_gamepad(gamepad: State<'_, GamepadManager>) -> Result<String, String> {
+    gamepad.stop();
+    Ok("Gamepad listener stopped".to_string())
 }
 
 /**
- * Get current controller state
+ * Get all connected gamepads
  */
 #[tauri::command]
-pub fn get_controller_state(
-    controller: State<'_, ControllerManager>,
-) -> Result<ControllerState, String> {
-    controller.get_state()
+pub fn get_gamepads(gamepad: State<'_, GamepadManager>) -> Result<Vec<Gamepad>, String> {
+    gamepad.get_gamepads()
 }
 
 /**
- * Get current controller settings
+ * Get specific gamepad by index
  */
 #[tauri::command]
-pub fn get_controller_settings(
-    controller: State<'_, ControllerManager>,
-) -> Result<ControllerSettings, String> {
-    controller.get_settings()
+pub fn get_gamepad(
+    index: usize,
+    gamepad: State<'_, GamepadManager>,
+) -> Result<Option<Gamepad>, String> {
+    gamepad.get_gamepad(index)
 }
 
 /**
- * Update controller settings
+ * Get all gamepad profiles
  */
 #[tauri::command]
-pub fn update_controller_settings(
-    sensitivity: f32,
-    dead_zone: f32,
-    acceleration: f32,
-    enabled: bool,
-    controller: State<'_, ControllerManager>,
+pub fn get_gamepad_profiles(
+    gamepad: State<'_, GamepadManager>,
+) -> Result<Vec<GamepadProfile>, String> {
+    gamepad.get_profiles()
+}
+
+/**
+ * Save a gamepad profile
+ */
+#[tauri::command]
+pub fn save_gamepad_profile(
+    profile: GamepadProfile,
+    gamepad: State<'_, GamepadManager>,
 ) -> Result<String, String> {
-    let settings = ControllerSettings {
-        sensitivity: sensitivity.clamp(0.5, 3.0),
-        dead_zone: dead_zone.clamp(0.0, 0.3),
-        acceleration: acceleration.clamp(0.8, 2.0),
-        enabled,
-    };
-    
-    controller.update_settings(settings)?;
-    Ok("Settings updated".to_string())
+    gamepad.save_profile(profile)?;
+    Ok("Profile saved".to_string())
+}
+
+/**
+ * Delete a gamepad profile
+ */
+#[tauri::command]
+pub fn delete_gamepad_profile(
+    profile_name: String,
+    gamepad: State<'_, GamepadManager>,
+) -> Result<String, String> {
+    gamepad.delete_profile(&profile_name)?;
+    Ok("Profile deleted".to_string())
+}
+
+/**
+ * Set active gamepad profile
+ */
+#[tauri::command]
+pub fn set_active_gamepad_profile(
+    profile_name: String,
+    gamepad: State<'_, GamepadManager>,
+) -> Result<String, String> {
+    gamepad.set_active_profile(profile_name)?;
+    Ok("Profile activated".to_string())
 }
