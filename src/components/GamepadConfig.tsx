@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   Card,
   CardContent,
@@ -12,121 +10,24 @@ import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { AlertCircle, Joystick, Zap } from "lucide-react";
-
-interface GamepadButton {
-  pressed: boolean;
-  touched: boolean;
-  value: number;
-}
-
-interface Gamepad {
-  id: string;
-  index: number;
-  connected: boolean;
-  timestamp: number;
-  buttons: GamepadButton[];
-  axes: number[];
-  mapping: string;
-  vibration_actuators: number;
-}
-
-interface GamepadProfile {
-  name: string;
-  description: string;
-  sensitivity: number;
-  dead_zone: number;
-  acceleration: number;
-  button_map: Record<string, number>;
-  axis_map: Record<string, number>;
-  enabled_features: {
-    mouse_control: boolean;
-    keyboard_emulation: boolean;
-    vibration: boolean;
-    adaptive_triggers: boolean;
-  };
-}
+import { useGamepadContext } from "@/assets/contexts/gamepad-context";
+import { useGamepad } from "@/hooks/useGamepad";
+import {
+  useGamepadMonitor,
+  useLoadGamepadProfiles,
+} from "@/hooks/useGamepadMonitor";
 
 export function GamepadConfig() {
-  const [gamepads, setGamepads] = useState<Gamepad[]>([]);
-  const [activeGamepadIndex, setActiveGamepadIndex] = useState(0);
-  const [profiles, setProfiles] = useState<GamepadProfile[]>([]);
-  const [isListening, setIsListening] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { state, dispatch } = useGamepadContext();
+  const gamepadTools = useGamepad(state, dispatch);
 
-  // Load gamepads on mount
-  useEffect(() => {
-    loadGamepads();
-    loadProfiles();
-  }, []);
+  // Monitor gamepad input when listening
+  useGamepadMonitor(state.isListening, dispatch);
 
-  // Poll gamepads when listening
-  useEffect(() => {
-    if (!isListening) return;
+  // Load profiles on mount
+  useLoadGamepadProfiles(dispatch);
 
-    const interval = setInterval(async () => {
-      try {
-        const pads = await invoke<Gamepad[]>("get_gamepads");
-        setGamepads(pads);
-      } catch (err) {
-        console.error("Failed to get gamepads:", err);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isListening]);
-
-  const loadGamepads = async () => {
-    try {
-      setError(null);
-      const pads = await invoke<Gamepad[]>("get_gamepads");
-      setGamepads(pads);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setError(errorMsg);
-    }
-  };
-
-  const loadProfiles = async () => {
-    try {
-      const profs = await invoke<GamepadProfile[]>("get_gamepad_profiles");
-      setProfiles(profs);
-    } catch (err) {
-      console.error("Failed to load profiles:", err);
-    }
-  };
-
-  const handleStartGamepad = async () => {
-    try {
-      setError(null);
-      await invoke("start_gamepad");
-      setIsListening(true);
-      await loadGamepads();
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setError(errorMsg);
-    }
-  };
-
-  const handleStopGamepad = async () => {
-    try {
-      setError(null);
-      await invoke("stop_gamepad");
-      setIsListening(false);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      setError(errorMsg);
-    }
-  };
-
-  const handleToggleListening = async (enabled: boolean) => {
-    if (enabled) {
-      await handleStartGamepad();
-    } else {
-      await handleStopGamepad();
-    }
-  };
-
-  const activeGamepad = gamepads[activeGamepadIndex];
+  const activeGamepad = gamepadTools.activeGamepad;
 
   return (
     <div className="w-full max-w-3xl mx-auto p-4 space-y-6">
@@ -143,10 +44,10 @@ export function GamepadConfig() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {error && (
+          {state.error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{state.error}</AlertDescription>
             </Alert>
           )}
 
@@ -158,26 +59,42 @@ export function GamepadConfig() {
                 Activate gamepad listener for all connected devices
               </p>
             </div>
-            <Switch
-              checked={isListening}
-              onCheckedChange={handleToggleListening}
-            />
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={state.isListening}
+                onCheckedChange={gamepadTools.toggleListening}
+                disabled={state.isLoading}
+              />
+              {state.isLoading && (
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              )}
+            </div>
           </div>
 
           {/* Connected Gamepads */}
-          {gamepads.length > 0 ? (
+          {state.gamepads.length > 0 ? (
             <div className="space-y-3">
-              <Label className="text-base font-semibold">
-                Connected Gamepads ({gamepads.filter((g) => g.connected).length}
-                )
-              </Label>
+              <div className="flex justify-between items-center">
+                <Label className="text-base font-semibold">
+                  Connected Gamepads (
+                  {state.gamepads.filter((g) => g.connected).length})
+                </Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={gamepadTools.refreshGamepads}
+                  disabled={!state.isListening}
+                >
+                  Refresh
+                </Button>
+              </div>
               <div className="grid gap-2">
-                {gamepads.map((gamepad, idx) => (
+                {state.gamepads.map((gamepad, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setActiveGamepadIndex(idx)}
+                    onClick={() => gamepadTools.setActiveGamepad(idx)}
                     className={`p-3 rounded-lg text-left border transition-all ${
-                      activeGamepadIndex === idx
+                      state.activeGamepadIndex === idx
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
@@ -211,7 +128,7 @@ export function GamepadConfig() {
           )}
 
           {/* Active Gamepad Details */}
-          {isListening && activeGamepad && activeGamepad.connected && (
+          {state.isListening && activeGamepad && activeGamepad.connected && (
             <div className="space-y-3">
               <Label className="text-base font-semibold">
                 Real-time Input State
@@ -253,11 +170,11 @@ export function GamepadConfig() {
           )}
 
           {/* Profiles Section */}
-          {profiles.length > 0 && (
+          {state.profiles.length > 0 && (
             <div className="space-y-3 border-t pt-4">
               <Label className="text-base font-semibold">Saved Profiles</Label>
               <div className="grid gap-2">
-                {profiles.map((profile) => (
+                {state.profiles.map((profile) => (
                   <div
                     key={profile.name}
                     className="p-3 rounded-lg border hover:border-blue-300 transition-colors"
@@ -274,6 +191,22 @@ export function GamepadConfig() {
                           <span>Acceleration: {profile.acceleration}x</span>
                         </div>
                       </div>
+                      <div className="flex gap-2">
+                        {state.activeProfile?.name === profile.name && (
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
+                            Active
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            gamepadTools.deleteProfile(profile.name)
+                          }
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -284,7 +217,7 @@ export function GamepadConfig() {
           {/* Control Instructions */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm space-y-2">
             <div className="flex gap-2">
-              <Zap className="w-4 h-4 flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <Zap className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
               <div>
                 <p className="font-semibold text-blue-900 dark:text-blue-100">
                   Default Controls (Any Gamepad)

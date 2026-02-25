@@ -1,17 +1,30 @@
 import Navigation from "@/components/Navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
+import { useLoadClipboardHistory } from "@/hooks/useLoadClipboardHistory";
 import Emoji from "@/pages/emoji";
 import Home from "@/pages/home";
 import Settings from "@/pages/settings";
 import Snippets from "@/pages/snippets";
 import Statistics from "@/pages/statistics";
 import { BrowserRouter, Route, Routes } from "react-router";
-import { useClipboardMonitor } from "@/hooks/useClipboardMonitor";
-import { useLoadClipboardHistory } from "@/hooks/useLoadClipboardHistory";
 import "./App.css";
+import { useGamepadContext } from "./assets/contexts/gamepad-context";
 import { Toaster } from "./components/ui/sonner";
+import {
+  useGamepadMonitor,
+  useLoadGamepadProfiles,
+} from "./hooks/useGamepadMonitor";
 
 function App() {
+  const { state, dispatch } = useGamepadContext();
+
+  // Monitor gamepad input when listening
+  useGamepadMonitor(state.isListening, dispatch);
+
+  // Load profiles on mount
+  useLoadGamepadProfiles(dispatch);
+
   // Load initial clipboard history from database
   useLoadClipboardHistory();
 

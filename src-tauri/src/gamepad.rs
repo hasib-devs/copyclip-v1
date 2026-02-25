@@ -23,18 +23,18 @@ impl Default for GamepadButton {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum GamepadButtonIndex {
     // Face buttons
-    South = 0,   // X or A
-    East = 1,    // Circle or B
-    West = 2,    // Square or X
-    North = 3,   // Triangle or Y
+    South = 0, // X or A
+    East = 1,  // Circle or B
+    West = 2,  // Square or X
+    North = 3, // Triangle or Y
     // Shoulder buttons
-    LB = 4,      // LB or L1
-    RB = 5,      // RB or R1
-    LT = 6,      // LT or L2
-    RT = 7,      // RT or R2
+    LB = 4, // LB or L1
+    RB = 5, // RB or R1
+    LT = 6, // LT or L2
+    RT = 7, // RT or R2
     // Menu buttons
-    Select = 8,  // Back/Select
-    Start = 9,   // Start
+    Select = 8, // Back/Select
+    Start = 9,  // Start
     // Stick clicks
     LeftStick = 10,
     RightStick = 11,
@@ -54,13 +54,13 @@ pub enum GamepadAxisIndex {
 /// Complete gamepad state (browser Gamepad API compatible)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Gamepad {
-    pub id: String,              // Unique identifier (e.g., "PS5 Controller (0)")
-    pub index: usize,            // Gamepad index in array
+    pub id: String,   // Unique identifier (e.g., "PS5 Controller (0)")
+    pub index: usize, // Gamepad index in array
     pub connected: bool,
-    pub timestamp: f64,          // Milliseconds since epoch
+    pub timestamp: f64, // Milliseconds since epoch
     pub buttons: Vec<GamepadButton>,
-    pub axes: Vec<f32>,          // Analog stick values (-1.0 to 1.0)
-    pub mapping: String,         // "standard" or custom mapping name
+    pub axes: Vec<f32>,             // Analog stick values (-1.0 to 1.0)
+    pub mapping: String,            // "standard" or custom mapping name
     pub vibration_actuators: usize, // Number of vibration motors
 }
 
@@ -72,7 +72,7 @@ impl Default for Gamepad {
             connected: false,
             timestamp: 0.0,
             buttons: vec![GamepadButton::default(); 16], // Standard has 17 buttons
-            axes: vec![0.0; 4], // Standard has 4 axes
+            axes: vec![0.0; 4],                          // Standard has 4 axes
             mapping: "standard".to_string(),
             vibration_actuators: 0,
         }
@@ -88,7 +88,8 @@ impl Gamepad {
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
-                .as_secs_f64() * 1000.0,
+                .as_secs_f64()
+                * 1000.0,
             buttons: vec![GamepadButton::default(); 16],
             axes: vec![0.0; 4],
             mapping: "standard".to_string(),
@@ -100,7 +101,8 @@ impl Gamepad {
         self.timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
-            .as_secs_f64() * 1000.0;
+            .as_secs_f64()
+            * 1000.0;
     }
 
     pub fn get_button(&self, button: GamepadButtonIndex) -> Option<&GamepadButton> {
@@ -126,6 +128,7 @@ impl Gamepad {
 
 /// Gamepad event types
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub enum GamepadEventType {
     Connected,
     Disconnected,
@@ -136,6 +139,7 @@ pub enum GamepadEventType {
 
 /// Gamepad event
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct GamepadEvent {
     pub gamepad_index: usize,
     pub gamepad_id: String,

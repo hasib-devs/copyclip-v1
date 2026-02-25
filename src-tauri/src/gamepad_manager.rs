@@ -1,6 +1,5 @@
 use crate::gamepad::{
-    Gamepad, GamepadAxisIndex, GamepadButton, GamepadButtonIndex, GamepadEvent, GamepadEventType,
-    GamepadProfile,
+    Gamepad, GamepadAxisIndex, GamepadButton, GamepadButtonIndex, GamepadProfile,
 };
 use enigo::{Enigo, MouseControllable};
 use gilrs::{Axis, Event, EventType, Gilrs, GilrsBuilder};
@@ -90,7 +89,7 @@ impl GamepadManager {
                         EventType::ButtonPressed(button, _) => {
                             if let Some(gamepad) = gamepads.lock().unwrap().get_mut(&(id.into())) {
                                 if let Some(gamepad_button) = Self::map_button_to_gamepad(button) {
-                                    let mut btn = GamepadButton {
+                                    let btn = GamepadButton {
                                         pressed: true,
                                         touched: true,
                                         value: 1.0,
@@ -153,16 +152,16 @@ impl GamepadManager {
     }
 
     /// Get currently active profile
-    pub fn get_active_profile(&self) -> Result<GamepadProfile, String> {
-        let profile_name = self.active_profile.lock().unwrap().clone();
-        Ok(self
-            .profiles
-            .lock()
-            .unwrap()
-            .get(&profile_name)
-            .cloned()
-            .unwrap_or_default())
-    }
+    // pub fn get_active_profile(&self) -> Result<GamepadProfile, String> {
+    //     let profile_name = self.active_profile.lock().unwrap().clone();
+    //     Ok(self
+    //         .profiles
+    //         .lock()
+    //         .unwrap()
+    //         .get(&profile_name)
+    //         .cloned()
+    //         .unwrap_or_default())
+    // }
 
     /// Set active profile
     pub fn set_active_profile(&self, profile_name: String) -> Result<(), String> {
