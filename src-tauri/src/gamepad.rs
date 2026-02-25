@@ -45,6 +45,8 @@ pub enum GamepadButtonIndex {
     DPadDown = 14,
     DPadLeft = 15,
     DPadRight = 16,
+    A,
+    B,
 }
 
 /// Standard gamepad axes indices (following HTML Gamepad API)

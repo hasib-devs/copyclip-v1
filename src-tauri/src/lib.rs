@@ -1,9 +1,12 @@
+mod actions;
 mod commands;
 mod db;
 mod gamepad;
 mod gamepad_manager;
 mod models;
+mod modes;
 mod scroll;
+mod types;
 
 use db::DatabaseService;
 use gamepad_manager::GamepadManager;
