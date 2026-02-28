@@ -1,18 +1,17 @@
-import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import GamepadDiagnostics from "@/components/GamepadDiagnostics";
+import GamepadSettingsPanel from "@/components/GamepadSettingsPanel";
+import KeybindingEditor from "@/components/KeybindingEditor";
+import ProfileManager from "@/components/ProfileManager";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { GamepadConfig } from "@/components/GamepadConfig";
-import KeybindingEditor from "@/components/KeybindingEditor";
-import GamepadSettingsPanel from "@/components/GamepadSettingsPanel";
-import ProfileManager from "@/components/ProfileManager";
-import GamepadDiagnostics from "@/components/GamepadDiagnostics";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const Settings = () => {
   const [theme, setTheme] = useState("system");
@@ -179,7 +178,7 @@ const Settings = () => {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 py-4 bg-slate-50">
-              <GamepadConfig />
+              {/* <GamepadConfig /> */}
             </AccordionContent>
           </AccordionItem>
 

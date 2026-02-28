@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import { BarChart3, Clipboard, Code2, Settings, Smile } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import ModeIndicator from "./ModeIndicator";
 
 const Navigation = () => {
   const location = useLocation();
@@ -22,7 +21,7 @@ const Navigation = () => {
         "overflow-x-auto",
       )}
     >
-      <div className="flex items-center gap-0 flex-1">
+      <div className="flex items-center justify-around gap-0 flex-1">
         {navItems.map(({ to, icon: Icon, label }) => {
           const isActive = location.pathname === to;
 
@@ -45,11 +44,6 @@ const Navigation = () => {
             </Link>
           );
         })}
-      </div>
-
-      {/* Mode Indicator on the right */}
-      <div className="shrink-0">
-        <ModeIndicator />
       </div>
     </nav>
   );
