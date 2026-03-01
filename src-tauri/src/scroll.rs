@@ -8,6 +8,11 @@ mod macos {
         use core_graphics::event::CGEvent;
         use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
+        eprintln!(
+            "[SCROLL] scroll() called with vertical={}, horizontal={}",
+            vertical, horizontal
+        );
+
         // Send scroll wheel events
         // In macOS CoreGraphics:
         // Positive wheel_count_y = scroll up
@@ -16,20 +21,32 @@ mod macos {
         // So: positive stick = positive scroll = scroll up (correct)
 
         if vertical != 0 {
+            eprintln!("[SCROLL] Processing vertical scroll: {}", vertical);
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 // Break large scrolls into multiple smaller events (120 units = 1 notch)
                 // This ensures smooth scrolling and proper direction encoding
                 let notches = (vertical.abs() / 120).max(1);
                 let direction = if vertical > 0 { 1 } else { -1 };
 
+                eprintln!(
+                    "[SCROLL] Vertical: notches={}, direction={}",
+                    notches, direction
+                );
+
                 let value = CGEvent::new_scroll_event(
                     source, 0, 120, // Fixed wheel count (1 notch)
                     0, direction, // Direction encoded in 5th parameter
                     0,
                 );
-                for _ in 0..notches {
+                eprintln!("[SCROLL] Created scroll event: {:?}", value.is_ok());
+                for i in 0..notches {
                     // Post one scroll notch per iteration (120 units = 1 macOS scroll notch)
                     if let Ok(ref event) = value {
+                        eprintln!(
+                            "[SCROLL] Posting vertical scroll event {}/{}",
+                            i + 1,
+                            notches
+                        );
                         event.post(core_graphics::event::CGEventTapLocation::HID);
                     }
                     std::thread::sleep(std::time::Duration::from_millis(3));
@@ -39,19 +56,31 @@ mod macos {
         }
 
         if horizontal != 0 {
+            eprintln!("[SCROLL] Processing horizontal scroll: {}", horizontal);
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
                 // Break large scrolls into multiple smaller events
                 let notches = (horizontal.abs() / 120).max(1);
                 let direction = if horizontal > 0 { 1 } else { -1 };
+
+                eprintln!(
+                    "[SCROLL] Horizontal: notches={}, direction={}",
+                    notches, direction
+                );
 
                 let value = CGEvent::new_scroll_event(
                     source, 120, // Fixed wheel count (1 notch)
                     0, 0, direction, // Direction encoded in 5th parameter
                     0,
                 );
-                for _ in 0..notches {
+                eprintln!("[SCROLL] Created scroll event: {:?}", value.is_ok());
+                for i in 0..notches {
                     // Post one scroll notch per iteration
                     if let Ok(ref event) = value {
+                        eprintln!(
+                            "[SCROLL] Posting horizontal scroll event {}/{}",
+                            i + 1,
+                            notches
+                        );
                         event.post(core_graphics::event::CGEventTapLocation::HID);
                     }
                     std::thread::sleep(std::time::Duration::from_millis(3));
@@ -60,6 +89,7 @@ mod macos {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
 
+        eprintln!("[SCROLL] Completed");
         Ok(())
     }
 }

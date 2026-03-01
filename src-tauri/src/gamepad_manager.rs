@@ -500,12 +500,22 @@ impl GamepadManager {
                 .get_axis(GamepadAxisIndex::RightStickY)
                 .unwrap_or(0.0);
 
+            eprintln!(
+                "[RIGHT_STICK] X: {:.3}, Y: {:.3}",
+                stick_x_right, stick_y_right
+            );
+
             if stick_x_right.abs() > 0.05 || stick_y_right.abs() > 0.05 {
                 // Increased sensitivity: multiply by 120 for macOS scroll units
                 // This makes scrolling feel smooth and responsive
                 let vertical_scroll = (stick_y_right * 120.0) as i32;
                 let horizontal_scroll = (stick_x_right * 120.0) as i32;
-                let _ = scroll::scroll(vertical_scroll, horizontal_scroll);
+                eprintln!(
+                    "[RIGHT_STICK] Calling scroll: vertical={}, horizontal={}",
+                    vertical_scroll, horizontal_scroll
+                );
+                let result = scroll::scroll(vertical_scroll, horizontal_scroll);
+                eprintln!("[RIGHT_STICK] Scroll result: {:?}", result);
             }
 
             // ============ PHASE 2: MODE SWITCHING ============
