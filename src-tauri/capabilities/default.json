@@ -12,17 +12,6 @@
     "core:app:allow-app-hide",
     "core:window:allow-minimize",
     "core:window:allow-close",
-    "clipboard:default",
-    "clipboard:allow-start-monitor",
-    "clipboard:allow-stop-monitor",
-    "clipboard:allow-read-text",
-    "clipboard:allow-write-text",
-    "clipboard:allow-read-image-base64",
-    "clipboard:allow-write-image-base64",
-    "clipboard:allow-read-files",
-    "clipboard:allow-write-files-uris",
-    "clipboard:allow-has-files",
-    "clipboard:read-all",
     "dialog:default"
   ]
 }
