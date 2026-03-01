@@ -236,10 +236,10 @@ const Home = () => {
             {displayedItems.map((item) => (
               <div
                 key={item.id}
-                className="hover:bg-slate-50 transition-colors p-4"
+                className="hover:bg-slate-50 transition-colors"
               >
                 {/* Item Content */}
-                <div className="mb-3">
+                <div className="mb-1">
                   {item.type === "image_base64" && item.imageBase64 ? (
                     <div className="flex items-center gap-2">
                       <img
