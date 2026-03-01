@@ -21,13 +21,13 @@
         "fullscreen": false,
         "decorations": false,
         "transparent": false,
-        "focus": true,
+        "focus": false,
         "alwaysOnTop": false,
         "acceptFirstMouse": true,
         "allowLinkPreview": true,
         "minimizable": true,
         "devtools": true,
-        "visible": true,
+        "visible": false,
         "center": true
       }
     ],

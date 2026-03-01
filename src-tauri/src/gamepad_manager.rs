@@ -317,6 +317,10 @@ impl GamepadManager {
                 serde_json::to_string(&profile.axis_map).unwrap_or_else(|_| "{}".to_string());
             let enabled_features_json = serde_json::to_string(&profile.enabled_features)
                 .unwrap_or_else(|_| "{}".to_string());
+            let scroll_settings_json = serde_json::to_string(&profile.scroll_settings)
+                .unwrap_or_else(|_| "{}".to_string());
+            let dpad_mapping_json =
+                serde_json::to_string(&profile.dpad_mapping).unwrap_or_else(|_| "{}".to_string());
 
             let _ = db
                 .save_gamepad_profile(
@@ -328,6 +332,8 @@ impl GamepadManager {
                     &button_map_json,
                     &axis_map_json,
                     &enabled_features_json,
+                    &scroll_settings_json,
+                    &dpad_mapping_json,
                 )
                 .map_err(|e| {
                     eprintln!("[GamepadManager] Failed to save profile to database: {}", e);

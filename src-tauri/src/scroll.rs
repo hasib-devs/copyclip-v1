@@ -8,12 +8,26 @@ mod macos {
         use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
         // Send scroll wheel events
-        // macOS scroll: positive = scroll down, negative = scroll up
+        // In macOS CoreGraphics:
+        // Positive wheel_count_y = scroll up
+        // Negative wheel_count_y = scroll down
+        // Right stick Y: positive = pushed up
+        // So: positive stick = positive scroll = scroll up (correct)
+
         if vertical != 0 {
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                if let Ok(event) =
-                    CGEvent::new_scroll_event(source, vertical.abs() as u32, 0, 0, 0, 0)
-                {
+                // Use absolute value for u32, but pass direction as i32 parameter
+                let wheel_count_y = vertical.abs() as u32;
+                // Post scroll event with all 6 required parameters
+                // Direction is encoded: positive vertical value = scroll up
+                if let Ok(event) = CGEvent::new_scroll_event(
+                    source,
+                    0,
+                    wheel_count_y,
+                    0,
+                    if vertical > 0 { 1 } else { -1 },
+                    0,
+                ) {
                     event.post(core_graphics::event::CGEventTapLocation::HID);
                 }
             }
@@ -22,9 +36,17 @@ mod macos {
 
         if horizontal != 0 {
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                if let Ok(event) =
-                    CGEvent::new_scroll_event(source, 0, horizontal.abs() as u32, 0, 0, 0)
-                {
+                // Use absolute value for u32, but pass direction as i32 parameter
+                let wheel_count_x = horizontal.abs() as u32;
+                // Post scroll event with all 6 required parameters
+                if let Ok(event) = CGEvent::new_scroll_event(
+                    source,
+                    wheel_count_x,
+                    0,
+                    0,
+                    if horizontal > 0 { 1 } else { -1 },
+                    0,
+                ) {
                     event.post(core_graphics::event::CGEventTapLocation::HID);
                 }
             }

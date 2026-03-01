@@ -89,9 +89,74 @@ impl DatabaseService {
             [],
         )?;
 
+        // Run migrations
+        Self::migrate_gamepad_profiles(&conn)?;
+
         Ok(Self {
             conn: Mutex::new(conn),
         })
+    }
+
+    /**
+     * Run database migrations for gamepad_profiles table
+     */
+    fn migrate_gamepad_profiles(conn: &Connection) -> SqliteResult<()> {
+        eprintln!("[DB::MIGRATE] Checking for gamepad_profiles schema...");
+
+        // Check if button_map column exists
+        let mut stmt = conn.prepare("PRAGMA table_info(gamepad_profiles)")?;
+        let columns: Vec<String> = stmt
+            .query_map([], |row| row.get(1))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        eprintln!("[DB::MIGRATE] Existing columns: {:?}", columns);
+
+        // Add missing columns if they don't exist
+        if !columns.contains(&"button_map".to_string()) {
+            eprintln!("[DB::MIGRATE] Adding button_map column...");
+            conn.execute(
+                "ALTER TABLE gamepad_profiles ADD COLUMN button_map TEXT NOT NULL DEFAULT '{}'",
+                [],
+            )?;
+        }
+
+        if !columns.contains(&"axis_map".to_string()) {
+            eprintln!("[DB::MIGRATE] Adding axis_map column...");
+            conn.execute(
+                "ALTER TABLE gamepad_profiles ADD COLUMN axis_map TEXT NOT NULL DEFAULT '{}'",
+                [],
+            )?;
+        }
+
+        if !columns.contains(&"enabled_features".to_string()) {
+            eprintln!("[DB::MIGRATE] Adding enabled_features column...");
+            let default_features = r#"{"mouse_control":true,"keyboard_emulation":false,"vibration":true,"adaptive_triggers":false,"scroll_control":true}"#;
+            conn.execute(
+                &format!("ALTER TABLE gamepad_profiles ADD COLUMN enabled_features TEXT NOT NULL DEFAULT '{}'", default_features),
+                []
+            )?;
+        }
+
+        if !columns.contains(&"scroll_settings".to_string()) {
+            eprintln!("[DB::MIGRATE] Adding scroll_settings column...");
+            let default_scroll = r#"{"enabled":true,"vertical_speed":1.0,"horizontal_speed":1.0,"reverse_vertical":false,"reverse_horizontal":false}"#;
+            conn.execute(
+                &format!("ALTER TABLE gamepad_profiles ADD COLUMN scroll_settings TEXT NOT NULL DEFAULT '{}'", default_scroll),
+                []
+            )?;
+        }
+
+        if !columns.contains(&"dpad_mapping".to_string()) {
+            eprintln!("[DB::MIGRATE] Adding dpad_mapping column...");
+            let default_dpad = r#"{"up":{"single":"Up"},"down":{"single":"Down"},"left":{"single":"Left"},"right":{"single":"Right"}}"#;
+            conn.execute(
+                &format!("ALTER TABLE gamepad_profiles ADD COLUMN dpad_mapping TEXT NOT NULL DEFAULT '{}'", default_dpad),
+                []
+            )?;
+        }
+
+        eprintln!("[DB::MIGRATE] Migration complete");
+        Ok(())
     }
 
     /**
@@ -361,6 +426,8 @@ impl DatabaseService {
         button_map_json: &str,
         axis_map_json: &str,
         enabled_features_json: &str,
+        scroll_settings_json: &str,
+        dpad_mapping_json: &str,
     ) -> SqliteResult<usize> {
         eprintln!("[DB::SAVE_PROFILE] Saving profile: {}", name);
         let conn = self.conn.lock().unwrap();
@@ -373,13 +440,13 @@ impl DatabaseService {
 
         if exists {
             conn.execute(
-                "UPDATE gamepad_profiles SET description = ?, sensitivity = ?, dead_zone = ?, acceleration = ?, button_map = ?, axis_map = ?, enabled_features = ?, updated_at = ? WHERE name = ?",
-                rusqlite::params![description, sensitivity as f64, dead_zone as f64, acceleration as f64, button_map_json, axis_map_json, enabled_features_json, now, name],
+                "UPDATE gamepad_profiles SET description = ?, sensitivity = ?, dead_zone = ?, acceleration = ?, button_map = ?, axis_map = ?, enabled_features = ?, scroll_settings = ?, dpad_mapping = ?, updated_at = ? WHERE name = ?",
+                rusqlite::params![description, sensitivity as f64, dead_zone as f64, acceleration as f64, button_map_json, axis_map_json, enabled_features_json, scroll_settings_json, dpad_mapping_json, now, name],
             )
         } else {
             conn.execute(
-                "INSERT INTO gamepad_profiles (name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                rusqlite::params![name, description, sensitivity as f64, dead_zone as f64, acceleration as f64, button_map_json, axis_map_json, enabled_features_json, now, now],
+                "INSERT INTO gamepad_profiles (name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features, scroll_settings, dpad_mapping, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                rusqlite::params![name, description, sensitivity as f64, dead_zone as f64, acceleration as f64, button_map_json, axis_map_json, enabled_features_json, scroll_settings_json, dpad_mapping_json, now, now],
             )
         }
     }
@@ -392,7 +459,7 @@ impl DatabaseService {
         let conn = self.conn.lock().unwrap();
 
         let mut stmt = conn.prepare(
-            "SELECT name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features FROM gamepad_profiles ORDER BY created_at DESC"
+            "SELECT name, description, sensitivity, dead_zone, acceleration, button_map, axis_map, enabled_features, scroll_settings, dpad_mapping FROM gamepad_profiles ORDER BY created_at DESC"
         )?;
 
         eprintln!("[DB::GET_PROFILES] Query prepared, executing...");
@@ -409,6 +476,8 @@ impl DatabaseService {
                 "button_map": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(5)?).unwrap_or_default(),
                 "axis_map": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(6)?).unwrap_or_default(),
                 "enabled_features": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(7)?).unwrap_or_default(),
+                "scroll_settings": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(8)?).unwrap_or_default(),
+                "dpad_mapping": serde_json::from_str::<serde_json::Value>(&row.get::<_, String>(9)?).unwrap_or_default(),
             }))
         })?;
 
