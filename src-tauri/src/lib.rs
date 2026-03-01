@@ -25,7 +25,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_clipboard::init())
         .setup(|app| {
             // Initialize database on app startup
             let app_handle = app.handle();
@@ -98,13 +97,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::init_database,
-            commands::save_clipboard_item,
-            commands::get_clipboard_items,
-            commands::get_clipboard_item,
-            commands::update_clipboard_item,
-            commands::delete_clipboard_item,
-            commands::clear_clipboard_history,
-            commands::get_clipboard_count,
             commands::load_initial_history,
             commands::start_gamepad,
             commands::stop_gamepad,

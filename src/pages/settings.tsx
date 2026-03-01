@@ -30,7 +30,7 @@ const Settings = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
             <p className="text-sm text-slate-500">
-              Customize your clipboard manager
+              Customize your gamepad settings
             </p>
           </div>
         </div>
@@ -125,24 +125,6 @@ const Settings = () => {
                     />
                   </div>
                 </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Clipboard Section */}
-          <AccordionItem
-            value="clipboard"
-            className="border-b border-slate-200"
-          >
-            <AccordionTrigger className="px-4 py-3 hover:bg-slate-50">
-              <div className="flex items-center gap-3">
-                <span>📋</span>
-                <span className="font-medium text-slate-900">Clipboard</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 py-4 bg-slate-50">
-              <div className="space-y-3 text-sm text-slate-600">
-                <p>Clipboard settings coming soon...</p>
               </div>
             </AccordionContent>
           </AccordionItem>

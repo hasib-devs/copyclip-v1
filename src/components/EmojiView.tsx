@@ -1,20 +1,12 @@
-import { useClipboard } from "@/hooks/useClipboard";
-import { ItemType } from "@/types/clipboard.types";
 import EmojiPicker from "emoji-picker-react";
 
 const EmojiView = () => {
-  // Get clipboard context
-  const { copyToClipboard, setError } = useClipboard();
-
   // Handle copy action
-  const handleCopy = async (
-    content: string,
-    type: ItemType["type"] = "text",
-  ) => {
+  const handleCopy = async (content: string) => {
     try {
-      await copyToClipboard(content, type);
+      await navigator.clipboard.writeText(content);
     } catch (err) {
-      setError("Failed to copy to clipboard");
+      console.error("Failed to copy to clipboard", err);
     }
   };
 

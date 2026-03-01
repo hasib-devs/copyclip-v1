@@ -1,12 +1,11 @@
 import { cn } from "@/lib/utils";
-import { BarChart3, Clipboard, Code2, Settings, Smile } from "lucide-react";
+import { BarChart3, Code2, Settings, Smile } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 const Navigation = () => {
   const location = useLocation();
 
   const navItems = [
-    { to: "/", icon: Clipboard, label: "Clipboard" },
     { to: "/emoji", icon: Smile, label: "Emoji" },
     { to: "/snippets", icon: Code2, label: "Snippets" },
     { to: "/stats", icon: BarChart3, label: "Stats" },

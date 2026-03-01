@@ -171,23 +171,6 @@ export function ControllerConfig() {
         console.error("Failed to start controller:", err);
       });
     }
-
-    // const interval = setInterval(async () => {
-    //   try {
-    //     const controllerState = await invoke<ControllerState>(
-    //       "get_controller_state",
-    //     );
-    //     console.info(
-    //       "[ControllerConfig] Fetched controller state:",
-    //       controllerState,
-    //     );
-    //     setState(controllerState);
-    //   } catch (err) {
-    //     console.error("Failed to get controller state:", err);
-    //   }
-    // }, 200);
-
-    // return () => clearInterval(interval);
   }, [isListening]);
 
   return (
