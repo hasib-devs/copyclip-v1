@@ -7,6 +7,7 @@ mod macos {
     use std::time::Duration;
 
     pub fn left_click() -> Result<(), String> {
+        eprintln!("[CLICK] left_click() called");
         unsafe {
             use core_graphics::event::{CGEvent, CGEventType, CGMouseButton};
             use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
@@ -19,11 +20,14 @@ mod macos {
                         evt.location()
                     } else {
                         // Fallback to center of screen if we can't get cursor position
+                        eprintln!("[CLICK] Using fallback cursor position");
                         CGPoint::new(500.0, 500.0)
                     }
                 } else {
                     return Err("Failed to create event source".to_string());
                 };
+
+            eprintln!("[CLICK] Cursor location: ({}, {})", location.x, location.y);
 
             // Post left mouse down
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
@@ -33,7 +37,10 @@ mod macos {
                     location,
                     CGMouseButton::Left,
                 ) {
+                    eprintln!("[CLICK] Posted LeftMouseDown event");
                     event.post(core_graphics::event::CGEventTapLocation::HID);
+                } else {
+                    eprintln!("[CLICK] Failed to create LeftMouseDown event");
                 }
             }
 
@@ -47,10 +54,14 @@ mod macos {
                     location,
                     CGMouseButton::Left,
                 ) {
+                    eprintln!("[CLICK] Posted LeftMouseUp event");
                     event.post(core_graphics::event::CGEventTapLocation::HID);
+                } else {
+                    eprintln!("[CLICK] Failed to create LeftMouseUp event");
                 }
             }
 
+            eprintln!("[CLICK] left_click() completed successfully");
             Ok(())
         }
     }

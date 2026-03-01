@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Copyclip",
+  "productName": "YinVim",
   "version": "0.1.0",
-  "identifier": "dev.hasib.copyclip",
+  "identifier": "dev.hasib.yinvim",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -12,14 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "Copyclip",
+        "title": "YinVim",
         "width": 500,
         "height": 720,
         "minWidth": 400,
         "minHeight": 620,
         "resizable": false,
         "fullscreen": false,
-        "decorations": false,
+        "decorations": true,
         "transparent": false,
         "focus": false,
         "alwaysOnTop": false,

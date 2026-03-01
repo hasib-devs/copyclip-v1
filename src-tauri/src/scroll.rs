@@ -3,6 +3,7 @@
 
 #[cfg(target_os = "macos")]
 mod macos {
+
     pub fn scroll(vertical: i32, horizontal: i32) -> Result<(), String> {
         use core_graphics::event::CGEvent;
         use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
@@ -16,19 +17,22 @@ mod macos {
 
         if vertical != 0 {
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                // Use absolute value for u32, but pass direction as i32 parameter
-                let wheel_count_y = vertical.abs() as u32;
-                // Post scroll event with all 6 required parameters
-                // Direction is encoded: positive vertical value = scroll up
-                if let Ok(event) = CGEvent::new_scroll_event(
-                    source,
+                // Break large scrolls into multiple smaller events (120 units = 1 notch)
+                // This ensures smooth scrolling and proper direction encoding
+                let notches = (vertical.abs() / 120).max(1);
+                let direction = if vertical > 0 { 1 } else { -1 };
+
+                let value = CGEvent::new_scroll_event(
+                    source, 0, 120, // Fixed wheel count (1 notch)
+                    0, direction, // Direction encoded in 5th parameter
                     0,
-                    wheel_count_y,
-                    0,
-                    if vertical > 0 { 1 } else { -1 },
-                    0,
-                ) {
-                    event.post(core_graphics::event::CGEventTapLocation::HID);
+                );
+                for _ in 0..notches {
+                    // Post one scroll notch per iteration (120 units = 1 macOS scroll notch)
+                    if let Ok(ref event) = value {
+                        event.post(core_graphics::event::CGEventTapLocation::HID);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(3));
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(5));
@@ -36,18 +40,21 @@ mod macos {
 
         if horizontal != 0 {
             if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {
-                // Use absolute value for u32, but pass direction as i32 parameter
-                let wheel_count_x = horizontal.abs() as u32;
-                // Post scroll event with all 6 required parameters
-                if let Ok(event) = CGEvent::new_scroll_event(
-                    source,
-                    wheel_count_x,
+                // Break large scrolls into multiple smaller events
+                let notches = (horizontal.abs() / 120).max(1);
+                let direction = if horizontal > 0 { 1 } else { -1 };
+
+                let value = CGEvent::new_scroll_event(
+                    source, 120, // Fixed wheel count (1 notch)
+                    0, 0, direction, // Direction encoded in 5th parameter
                     0,
-                    0,
-                    if horizontal > 0 { 1 } else { -1 },
-                    0,
-                ) {
-                    event.post(core_graphics::event::CGEventTapLocation::HID);
+                );
+                for _ in 0..notches {
+                    // Post one scroll notch per iteration
+                    if let Ok(ref event) = value {
+                        event.post(core_graphics::event::CGEventTapLocation::HID);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(3));
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(5));

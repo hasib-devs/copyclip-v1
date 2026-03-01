@@ -78,7 +78,7 @@ impl Default for Gamepad {
             index: 0,
             connected: false,
             timestamp: 0.0,
-            buttons: vec![GamepadButton::default(); 16], // Standard has 17 buttons
+            buttons: vec![GamepadButton::default(); 32], // Increased from 16 to accommodate all button types
             axes: vec![0.0; 4],                          // Standard has 4 axes
             mapping: "standard".to_string(),
             vibration_actuators: 0,
@@ -97,7 +97,7 @@ impl Gamepad {
                 .unwrap_or_default()
                 .as_secs_f64()
                 * 1000.0,
-            buttons: vec![GamepadButton::default(); 16],
+            buttons: vec![GamepadButton::default(); 32], // Increased to accommodate all button types
             axes: vec![0.0; 4],
             mapping: "standard".to_string(),
             vibration_actuators: 2, // Most modern controllers have 2

@@ -32,7 +32,7 @@ pub fn run() {
 
             // Get app data directory
             let app_data_dir = if let Some(project_dirs) =
-                directories::ProjectDirs::from("dev", "hasib", "copyclip")
+                directories::ProjectDirs::from("dev", "hasib", "yinvim")
             {
                 project_dirs.data_dir().to_path_buf()
             } else {
@@ -41,7 +41,7 @@ pub fn run() {
             };
 
             // Create database path
-            let db_path = app_data_dir.join("copyclip.db");
+            let db_path = app_data_dir.join("yinvim.db");
 
             // Initialize database synchronously (rusqlite is sync)
             eprintln!("[AppSetup] Creating database at: {:?}", db_path);

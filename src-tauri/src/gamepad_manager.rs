@@ -184,23 +184,36 @@ impl GamepadManager {
                             }
                         }
                         EventType::ButtonPressed(button, _) => {
+                            eprintln!("[EVENT] ButtonPressed event from gilrs: {:?}", button);
                             if let Some(gamepad) = gamepads
                                 .lock()
                                 .unwrap_or_else(|e| e.into_inner())
                                 .get_mut(&(id.into()))
                             {
                                 if let Some(gamepad_button) = Self::map_button_to_gamepad(button) {
+                                    eprintln!(
+                                        "[EVENT] Mapped to GamepadButtonIndex: {:?}",
+                                        gamepad_button
+                                    );
                                     let btn = GamepadButton {
                                         pressed: true,
                                         touched: true,
                                         value: 1.0,
                                     };
                                     gamepad.set_button(gamepad_button, btn);
+                                    eprintln!(
+                                        "[EVENT] Set button {:?} to pressed=true",
+                                        gamepad_button
+                                    );
                                     gamepad.update_timestamp();
 
                                     // Track state for edge detection
                                     let key = (id.into(), gamepad_button);
                                     last_button_state.insert(key, true);
+                                    eprintln!(
+                                        "[EVENT] Updated last_button_state[{:?}] = true",
+                                        key
+                                    );
                                 }
                             }
                         }
@@ -488,8 +501,10 @@ impl GamepadManager {
                 .unwrap_or(0.0);
 
             if stick_x_right.abs() > 0.05 || stick_y_right.abs() > 0.05 {
-                let vertical_scroll = (stick_y_right * 10.0) as i32;
-                let horizontal_scroll = (stick_x_right * 10.0) as i32;
+                // Increased sensitivity: multiply by 120 for macOS scroll units
+                // This makes scrolling feel smooth and responsive
+                let vertical_scroll = (stick_y_right * 120.0) as i32;
+                let horizontal_scroll = (stick_x_right * 120.0) as i32;
                 let _ = scroll::scroll(vertical_scroll, horizontal_scroll);
             }
 
@@ -585,6 +600,16 @@ impl GamepadManager {
 
                 let button_key = (gamepad.index, button_idx);
                 let button_was_pressed = button_state.get(&button_key).copied().unwrap_or(false);
+
+                // Debug: Log all button state changes
+                if button_pressed && !button_was_pressed {
+                    eprintln!("[DETECTION] Button {:?} pressed (rising edge)", button_idx);
+                } else if !button_pressed && button_was_pressed {
+                    eprintln!(
+                        "[DETECTION] Button {:?} released (falling edge)",
+                        button_idx
+                    );
+                }
 
                 // Rising edge: button just pressed
                 if button_pressed && !button_was_pressed {

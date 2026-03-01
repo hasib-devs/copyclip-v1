@@ -517,7 +517,7 @@ Enable debug logging:
 ```bash
 RUST_LOG=debug cargo run
 # or
-env RUST_LOG=debug ./target/debug/copyclip
+env RUST_LOG=debug ./target/debug/yinvim
 ```
 
 Look for logs prefixed with:

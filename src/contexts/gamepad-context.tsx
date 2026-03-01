@@ -1,5 +1,5 @@
 import { gamepadReducer, initialGamepadState } from "@/hooks/gamepadReducer";
-import { Gamepad, GamepadProfile } from "@/types/gamepad.types";
+import { Gamepad } from "@/types/gamepad.types";
 import { invoke } from "@tauri-apps/api/core";
 import React, {
   createContext,
